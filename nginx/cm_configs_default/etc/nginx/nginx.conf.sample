@@ -105,6 +105,12 @@ http {
             proxy_pass http://$tmpcbirhost;
         }
 
+        # Internal communication to WSI-CBIR from other internal micro-services
+        location /wsi-cbir {
+            set $tmpwsicbirhost "$INTERNAL_URLS_WSI_CBIR";
+            proxy_pass http://$tmpwsicbirhost;
+        }
+
         location /sam {
             set $tmpsamhost "$INTERNAL_URLS_SAM";
             proxy_pass http://$tmpsamhost;

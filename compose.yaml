@@ -201,36 +201,19 @@ services:
       host_network:
         ipv4_address: 172.16.238.11
 
-  cbir:
-    image: cytomine/cbir:latest
+  wsi-cbir:
+    image: cytomine/wsi-cbir:latest
     restart: unless-stopped
-    depends_on:
-      - redis
+    #depends_on: NOTE: for now based ont json/dicts
+    #  - redis
     volumes:
-      - ${DATA_PATH:-./data}/cbir:/data/cbir
-      - ${DATA_PATH:-./data}/weights:/weights
-    environment:
-      API_BASE_PATH: ${CBIR_API_BASE_PATH:-/cbir}
-      DATA_PATH: /data/cbir
-      DB: 0
-      EXTRACTOR: ${CBIR_EXTRACTOR:-resnet}
-      HOST: redis
-      PORT: 6380
+      - /home/lorenz/Documents/embeddings:/inputs/embeddings
+      - /home/lorenz/Documents/querie_samples:/queries
+      - /home/lorenz/Documents/model_weights:/app/model_weights
     networks:
       host_network:
-        ipv4_address: 172.16.238.12
+        ipv4_address: 172.16.238.16
 
-  sam:
-    image: cytomine/sam:latest
-    restart: unless-stopped
-    volumes:
-      - ${DATA_PATH:-./data}/weights:/weights
-    environment:
-      API_BASE_PATH: ${SAM_API_BASE_PATH:-/sam}
-      WEIGHTS_PATH: /weights
-    networks:
-      host_network:
-        ipv4_address: 172.16.238.13
 
   nginx:
     image: cytomine/nginx:latest

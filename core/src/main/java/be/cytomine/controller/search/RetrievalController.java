@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import be.cytomine.domain.ontology.AnnotationDomain;
 import be.cytomine.dto.search.SearchResponse;
 import be.cytomine.service.search.RetrievalService;
+import be.cytomine.service.search.WsiRetrievalService;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -45,3 +46,4 @@ public class RetrievalController {
         return retrievalService.retrieveSimilarImages(annotation, nrt_neigh);
     }
 }
+
