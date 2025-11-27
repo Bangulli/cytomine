@@ -23,8 +23,8 @@ def get_encoder(key):
     ## Load models
     with SwitchCase(key) as switch:
         if switch.case(["ProvGigaPath", "PGP"]):
-            patch_model_checkpoint_path = "./model_weights/provgigapath_patch_raw.pth"
-            slide_model_checkpoint_path = "./model_weights/provgigapath_slide.pth"
+            patch_model_checkpoint_path = "/model_weights/provgigapath_patch_raw.pth"
+            slide_model_checkpoint_path = "/model_weights/provgigapath_slide.pth"
             from src.networks.patch_encoders import provgigapath as provgigapath_patch
             from src.networks.slide_encoders import provgigapath as provgigapath_slide
             patch_encoder = provgigapath_patch.ProvGigaPath_Patch(model_checkpoint_path=patch_model_checkpoint_path).eval()
@@ -34,8 +34,8 @@ def get_encoder(key):
             print(f"@encoder-mgmt: ProvGigaPath loaded successfully.")
             
         elif switch.case("CHIEF"):
-            patch_model_checkpoint_path = "./model_weights/CHIEF_patch.pth"
-            slide_model_checkpoint_path = "./model_weights/CHIEF_slide.pth"
+            patch_model_checkpoint_path = "/model_weights/CHIEF_patch.pth"
+            slide_model_checkpoint_path = "/model_weights/CHIEF_slide.pth"
             from src.networks.patch_encoders import chief as chief_patch
             from src.networks.slide_encoders import chief as chief_slide
             patch_encoder = chief_patch.CHIEF_Patch(model_checkpoint_path=patch_model_checkpoint_path).eval()
@@ -45,8 +45,8 @@ def get_encoder(key):
             print(f"@encoder-mgmt: CHIEF loaded successfully.")
             
         elif switch.case("TITAN"):
-            patch_model_checkpoint_path = "./model_weights/TITAN_patch.bin"
-            slide_model_checkpoint_path = "./model_weights/TITAN_slide.safetensors"
+            patch_model_checkpoint_path = "/model_weights/TITAN_patch.bin"
+            slide_model_checkpoint_path = "/model_weights/TITAN_slide.safetensors"
             from src.networks.patch_encoders import titan as titan_patch
             from src.networks.slide_encoders import titan as titan_slide
             patch_encoder = titan_patch.TITAN_Patch(model_checkpoint_path=patch_model_checkpoint_path).eval()
@@ -56,8 +56,8 @@ def get_encoder(key):
             print(f"@encoder-mgmt: TITAN loaded successfully")
             
         elif switch.case("PRISM"):
-            patch_model_checkpoint_path = "./model_weights/PRISM_patch.bin"
-            slide_model_checkpoint_path = "./model_weights/PRISM_slide.pth"
+            patch_model_checkpoint_path = "/model_weights/PRISM_patch.bin"
+            slide_model_checkpoint_path = "/model_weights/PRISM_slide.pth"
             from src.networks.patch_encoders import prism as prism_patch
             from src.networks.slide_encoders import prism as prism_slide
             patch_encoder = prism_patch.PRISM_Patch(model_checkpoint_path=patch_model_checkpoint_path).eval()

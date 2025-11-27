@@ -161,6 +161,13 @@
             </a>
             <review-panel class="panel-options" v-show="activePanel === 'review'" :index="index" />
           </li>
+
+          <li v-if="isPanelDisplayed('content-based-image-retrieval') && canEdit">
+            <a @click="togglePanel('content-based-image-retrieval')" :class="{active: activePanel === 'content-based-image-retrieval'}">
+              <i class="fas fa-check-circle"></i>
+            </a>
+            <wsi-cbir-panel class="panel-options" v-show="activePanel === 'content-based-image-retrieval'" :index="index" />
+          </li>
         </template>
       </ul>
     </div>
@@ -210,6 +217,7 @@ import OntologyPanel from './panels/OntologyPanel';
 import PropertiesPanel from './panels/PropertiesPanel';
 import FollowPanel from './panels/FollowPanel';
 import ReviewPanel from './panels/ReviewPanel';
+import WsiCbirPanel from './panels/WsiCbirPanel';
 
 import SelectInteraction from './interactions/SelectInteraction';
 import DrawInteraction from './interactions/DrawInteraction';
@@ -229,6 +237,7 @@ import {Cytomine, ImageConsultation, Annotation, AnnotationType, UserPosition, S
 // import {constLib, operation} from '@/utils/color-manipulation.js';
 
 import constants from '@/utils/constants.js';
+
 
 export default {
   name: 'cytomine-image',
@@ -256,6 +265,7 @@ export default {
     PropertiesPanel,
     FollowPanel,
     ReviewPanel,
+    WsiCbirPanel,
 
     SelectInteraction,
     DrawInteraction,
@@ -717,6 +727,11 @@ export default {
         case 'toggle-overview':
           if (this.isPanelDisplayed('overview')) {
             this.toggleOverview();
+          }
+          return;
+        case 'toggle-content-based-image-retrieval':
+          if (this.isPanelDisplayed('content-based-image-retrieval') && this.canEdit) {
+            this.togglePanel('content-based-image-retrieval');
           }
           return;
       }

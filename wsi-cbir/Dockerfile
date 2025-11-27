@@ -29,6 +29,9 @@ ENV PYTHONPATH=/app
 COPY wsi-cbir/src/ /app/src/
 COPY wsi-cbir/api/ /app/api/
 COPY wsi-cbir/app.py /app/app.py
+## adjust for deployment
+COPY data/model_weights/CHIEF_patch.pth /model_weights/
+COPY data/model_weights/CHIEF_slide.pth /model_weights/
 
 COPY /requirements_chief.txt /app/requirements_chief.txt
 RUN python -m pip install -r /app/requirements_chief.txt

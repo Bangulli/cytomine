@@ -1,0 +1,2 @@
+New panel doesnt show up in cytomine
+Routing from WsiRetrievalService through nginx to microservice doesnt work. I hard coded the base url but this needs fixing but idk whats wrong.

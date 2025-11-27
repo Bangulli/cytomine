@@ -23,12 +23,19 @@ public class WsiRetrievalController {
 
     private final WsiRetrievalService retrievalService;
 
-    @GetMapping("/retrieval/retrieval")
+    @GetMapping("/wsi-cbir/retrieval")
     public ResponseEntity<SearchResponse> retrieveSimilarImages(
-        @RequestParam(value = "k_best") Long k_best
+        @RequestParam(value = "k") Long k,
+        @RequestParam(value = "query") String query,
+        @RequestParam(value = "datasets") String datasets,
+        @RequestParam(value = "staining") String staining,
+        @RequestParam(value = "organ") String organ,
+        @RequestParam(value = "species") String species,
+        @RequestParam(value = "diagnosis") String diagnosis
+
     ) {
         log.debug("Retrieve similar images for query image");
 
-        return retrievalService.retrieveSimilarImages(k_best);
+        return retrievalService.retrieveSimilarImages(k, query, datasets, staining, organ, species, diagnosis);
     }
 }

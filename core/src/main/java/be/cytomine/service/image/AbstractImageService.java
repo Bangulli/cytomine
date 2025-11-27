@@ -32,6 +32,7 @@ import be.cytomine.service.CurrentUserService;
 import be.cytomine.service.ModelService;
 import be.cytomine.service.command.TransactionService;
 import be.cytomine.service.meta.AttachedFileService;
+import be.cytomine.service.search.WsiRetrievalService;
 import be.cytomine.service.security.SecurityACLService;
 import be.cytomine.utils.*;
 import be.cytomine.utils.filters.SQLSearchParameter;
@@ -98,6 +99,9 @@ public class AbstractImageService extends ModelService {
 
     @Autowired
     private AttachedFileService attachedFileService;
+
+    @Autowired
+    private WsiRetrievalService wsiRetrievalService;
 
 
     @Override
@@ -213,6 +217,8 @@ public class AbstractImageService extends ModelService {
         return executeCommand(new AddCommand(currentUser),null, json);
 
     }
+
+
 
     /**
      * Update this domain with new data from json
@@ -359,5 +365,10 @@ public class AbstractImageService extends ModelService {
         for(NestedImageInstance nestedImageInstance : nestedImageInstances) {
             nestedImageInstanceRepository.delete(nestedImageInstance);
         }
+    }
+
+    protected void afterAdd(CytomineDomain domain, CommandResponse response) {
+        AbstractImage image = (AbstractImage) domain;
+        wsiRetrievalService.indexImage(image);
     }
 }

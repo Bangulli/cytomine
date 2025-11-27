@@ -1,64 +1,134 @@
-<!-- Copyright (c) 2009-2022. Authors: see NOTICE file.
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.-->
-
 <template>
-<div>
-  <h1>{{$t('digital-zoom')}}</h1>
-  <b-checkbox v-model="digitalZoom">
-    {{$t('digital-zoom-checkbox-label')}}
-  </b-checkbox>
+  <div>
+    <div class="wsi-retrieval">
+      <h1>{{ $t('wsi-retrieval') }}</h1>
+      <a @click="closeRetrieval()">
+        <span class="fas fa-times-circle"></span>
+      </a>
+    </div>
 
-  <div class="actions level">
-    <button class="button is-small level-item" @click="$emit('fitZoom')">
-      {{ $t('button-best-fit-zoom') }}
-    </button>
-    <button class="button is-small level-item" @click="$emit('resetZoom')">
-      {{ $t('button-reset-zoom') }}
-    </button>
+    <div>
+      <h5>{{ $t('similar-images') }}</h5>
+
+      <!-- Query input 
+      <b-field label="Query">
+        <b-input v-model="query" placeholder="Enter query text"></b-input>
+      </b-field> -->
+
+      <!-- Staining -->
+      <b-field label="Staining">
+        <b-input v-model="staining" placeholder="Staining (optional)"></b-input>
+      </b-field>
+
+      <!-- Organ -->
+      <b-field label="Organ">
+        <b-input v-model="organ" placeholder="Organ (optional)"></b-input>
+      </b-field>
+
+      <!-- Species -->
+      <b-field label="Species">
+        <b-input v-model="species" placeholder="Species (optional)"></b-input>
+      </b-field>
+
+      <!-- Diagnosis -->
+      <b-field label="Diagnosis">
+        <b-input v-model="diagnosis" placeholder="Diagnosis (optional)"></b-input>
+      </b-field>
+
+      <!-- k -->
+      <b-field label="k (number of results)">
+        <b-input type="number" v-model.number="k"></b-input>
+      </b-field>
+
+      <button class="button is-small is-fullwidth" @click="searchSimilarImages">
+        {{ $t('search-similar-image') }}
+      </button>
+
+      <div class="results-container">
+        <textarea :value="output" readonly class="results-textfield"></textarea>
+      </div>
+    </div>
   </div>
-
-</div>
 </template>
 
 <script>
+import {Cytomine} from '@/api';
+
 export default {
-  name: 'digital-zoom',
+  name: 'WsiCbirPanel',
   props: {
-    index: String
+    index: String,
+  },
+  data() {
+    return {
+      data: null,
+      output: '',
+
+      // Added input fields
+      staining: '',
+      organ: '',
+      species: '',
+      diagnosis: '',
+      k: 3,
+    };
   },
   computed: {
-    imageModule() {
-      return this.$store.getters['currentProject/imageModule'](this.index);
+    viewerWrapper() {
+      return this.$store.getters['currentProject/currentViewer'];
     },
-    imageWrapper() {
-      return this.$store.getters['currentProject/currentViewer'].images[this.index];
+    image() {
+      return this.viewerWrapper.images[this.index].imageInstance;
     },
-    digitalZoom: {
-      get() {
-        return this.imageWrapper.view.digitalZoom;
-      },
-      set(value) {
-        this.$store.commit(this.imageModule + 'setDigitalZoom', Boolean(value));
+  },
+  methods: {
+    async searchSimilarImages() {
+      if (!this.image) {
+        this.output = 'Error: Image not found';
+        return;
       }
-    }
-  }
+
+      console.log('invoking search');
+      const params = {
+        query: this.image.filename,
+        datasets: '',
+        staining: this.staining || '',
+        organ: this.organ || '',
+        species: this.species || '',
+        diagnosis: this.diagnosis || '',
+        k: this.k || 3,
+      };
+
+      // Log request data
+      this.output = `=== REQUEST ===\n${JSON.stringify(params, null, 2)}\n\n=== RESPONSE ===\n`;
+
+      this.data = (
+        await Cytomine.instance.api.get('wsi-cbir/retrieval', {
+          params,
+        })
+      ).data;
+
+      // Append response data
+      this.output += JSON.stringify(this.data, null, 2);
+    },
+  },
 };
 </script>
 
 <style scoped>
-  .actions .button {
-    margin: 3px;
-    box-sizing: border-box;
-  }
+.results-container {
+  margin-top: 1rem;
+}
+
+.results-textfield {
+  width: 100%;
+  height: 300px;
+  padding: 0.5rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
+  overflow: auto;
+  background-color: #f5f5f5;
+}
 </style>

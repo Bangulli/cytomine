@@ -25,6 +25,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import be.cytomine.config.properties.ApplicationProperties;
 import be.cytomine.domain.ontology.AnnotationDomain;
+import be.cytomine.domain.image.AbstractImage;
 import be.cytomine.dto.image.CropParameter;
 import be.cytomine.dto.search.SearchResponse;
 import be.cytomine.service.middleware.ImageServerService;
@@ -34,7 +35,7 @@ import be.cytomine.service.middleware.ImageServerService;
 @Service
 public class WsiRetrievalService {
 
-    public static final String CBIR_API_BASE_PATH = "/wsi-cbir";
+    public static final String CBIR_API_BASE_PATH = "http://wsi-cbir:6001";
 
     private final RestTemplate restTemplate;
 
@@ -42,34 +43,57 @@ public class WsiRetrievalService {
     private String cbirUrl;
 
     public String getInternalCbirURL() {
-        return cbirUrl + CBIR_API_BASE_PATH;
+        return CBIR_API_BASE_PATH;
     }
 
-    public ResponseEntity<SearchResponse> retrieveSimilarImages(Long k_best) {
+    public ResponseEntity<SearchResponse> retrieveSimilarImages(Long k, String query, String datasets, String staining, String organ, String species, String diagnosis) {
         String url = UriComponentsBuilder
             .fromHttpUrl(getInternalCbirURL())
-            .path("/retrieval")
-            .queryParam("query", "/queries/IMAGE_AAeZemiStB")
-            .queryParam("k_best", k_best + 1)
+            .path("/api/retrieval")
+            .queryParam("query", query)
+            .queryParam("datasets", datasets)
+            .queryParam("staining", staining)
+            .queryParam("organ", organ)
+            .queryParam("species", species)
+            .queryParam("diagnosis", diagnosis)
+            .queryParam("k", k)
             .toUriString();
+        log.debug(url);
 
-        // Create an empty HttpEntity for POST requests with no body
-        HttpEntity<Void> entity = new HttpEntity<>(null);
+        ResponseEntity<String> stringResponse = restTemplate.exchange(url, HttpMethod.GET, null, String.class);
+        log.debug("Raw response body: {}", stringResponse.getBody());
 
-        ResponseEntity<SearchResponse> response = this.restTemplate.exchange(
-            url,
-            HttpMethod.POST,
-            entity,                     // required HttpEntity
-            SearchResponse.class        // response type
-        );
+        ResponseEntity<SearchResponse> response = restTemplate.exchange(url, HttpMethod.GET, null, SearchResponse.class);
 
         log.debug("Receiving response {}", response);
 
         SearchResponse searchResponse = response.getBody();
         if (searchResponse == null) {
+            log.warn("SearchResponse body is null");
             return response;
         }
 
+        log.debug("Query: {}, Index: {}, Storage: {}, Similarities count: {}", 
+            searchResponse.getQuery(), 
+            searchResponse.getIndex(), 
+            searchResponse.getStorage(),
+            searchResponse.getSimilarities() != null ? searchResponse.getSimilarities().size() : 0);
+
         return ResponseEntity.ok(searchResponse);
+    }
+
+    public ResponseEntity<String> indexImage(AbstractImage image) {
+        URI url = UriComponentsBuilder
+            .fromHttpUrl(getInternalCbirURL())
+            .path("/api/indexing")
+            .queryParam("image_id", image.getId())
+            .queryParam("path", image.getPath())
+            .queryParam("filename", image.getOriginalFilename())
+            .build()
+            .toUri();
+
+        log.debug("Create index for image {}", image.getId());
+
+        return restTemplate.exchange(url, HttpMethod.POST, null, String.class);
     }
 }

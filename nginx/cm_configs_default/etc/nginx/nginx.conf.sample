@@ -108,7 +108,7 @@ http {
         # Internal communication to WSI-CBIR from other internal micro-services
         location /wsi-cbir {
             set $tmpwsicbirhost "$INTERNAL_URLS_WSI_CBIR";
-            proxy_pass http://$tmpwsicbirhost;
+            proxy_pass http://wsi-cbir:6001;
         }
 
         location /sam {

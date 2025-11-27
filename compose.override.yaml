@@ -41,6 +41,11 @@ services:
     build:
       context: ./cbir/
 
+  wsi-cbir:
+    image: cytomine/wsi-cbir:latest
+    build:
+      context: ./wsi-cbir/
+
   sam:
     image: cytomine/sam:latest
     build:

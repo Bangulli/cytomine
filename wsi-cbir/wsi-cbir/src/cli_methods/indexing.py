@@ -17,97 +17,25 @@ from src.inference import inference
 from src.datasets.wsi import WholeSlideEmbedding
 from src.utils.hardware_mgmt import get_least_used_gpu
 from src.networks.encoder_mgmt import get_encoder, DIMS
-from src.datasets.dataset_mgmt import get_dataset_factory, determine_datareader
+from src.datasets.dataset_mgmt import get_dataset_factory, determine_datareader_for_file
 from src.retrieval.index import Index
+from src.config import CYTOMINE_CONFIG
 ########################
     
 #------------------------------------------------ INDEXING ENTRYPOINT ------------------------------------------------#    
-def calculate_embeddings(args):
+def calculate_embedding_for_image(path, filename, image_id):
     ## Handle file I/O 
-    dataset = pl.Path(f"/inputs/datasets/{args.name}") if os.path.exists("/inputs") else pl.Path(f"inputs/datasets/{args.name}")
-    assert dataset.exists(), f"""Path {str(dataset)} doesnt exist. Available sets are {os.listdir('/inputs/datasets') if os.path.exists("/inputs") else os.listdir('inputs/datasets')}"""
-    assert dataset.is_dir(), f"Input must be a path to a BigPicture Dataset directory, {str(dataset)} is not a directory."
-    embeddings = "/inputs/embeddings"/pl.Path(args.embeddings)/dataset.name if os.path.exists("/inputs") else "inputs/embeddings"/pl.Path(args.embeddings)/dataset.name
-        
-    ## Create or read config file
-    xml_path = embeddings.parent / "embedding_config.xml"
-
-    if not xml_path.exists():  # create if it doesn’t exist
-        root = ET.Element("embeddings")
-        
-        # --- Config section ---
-        config = ET.SubElement(root, "config", {
-            "encoder": args.encoder,
-            "level": str(args.level),
-            "full_precision": str(args.full_precision),
-            "remove_bg": str(args.remove_bg)
-        })
-
-        # --- Datasets section ---
-        datasets_el = ET.SubElement(root, "datasets")
-        ET.SubElement(datasets_el, "dataset", {
-            "name": dataset.name,
-            "fully_processed": "False"
-        })
-
-        # --- Write XML to file ---
-        tree = ET.ElementTree(root)
-        ET.indent(tree, space="\t", level=0)  
-        os.makedirs(embeddings, exist_ok=True)
-        tree.write(xml_path, encoding="utf-8", xml_declaration=True)
-
-    else:  # override if it exists
-        print("= Found embedding_config.xml in parent directory, overriding any arguments to ensure homogenity")
-
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-
-        # --- Override args from <config> ---
-        config = root.find("config")
-        if config is not None:
-            for key, value in config.attrib.items():
-                val = value
-                setattr(args, key, val)
-        
-        ## set booleans
-        args.full_precision = args.full_precision.lower()=='true' if type(args.full_precision) != bool else args.full_precision
-
-
-    # --- Handle datasets ---
-    datasets_el = root.find("datasets")
-    if datasets_el is None:
-        datasets_el = ET.SubElement(root, "datasets")
-
-    all_sets = {ds.get("name"): ds.get("fully_processed") for ds in datasets_el.findall("dataset")}
-
-    if dataset.name in all_sets:
-        if all_sets[dataset.name] == "True":
-            result = {
-                "status": "Finished",
-                "info": f"Dataset {dataset.name} is listed as fully processed in embeddings_config.xml, skipping."
-            }
-            print("--FINISHED--", json.dumps(result))
-            if hasattr(args, 'return_result'):
-                return result
-            else:
-                return 0
-    else:
-        ET.SubElement(datasets_el, "dataset", {
-            "name": dataset.name,
-            "fully_processed": "False"
-        })
-        os.makedirs(embeddings, exist_ok=True)
-
-    # --- Write updated XML ---
-    ET.indent(tree, space="\t", level=0)
-    tree.write(xml_path, encoding="utf-8", xml_declaration=True)
-            
+    image_path = pl.Path('/images')/path
+    image_filename = filename
+    image_id = image_id
+    embeddings = pl.Path(CYTOMINE_CONFIG['embeddings'])
+     
     ## Handle Datatype
-    factory = get_dataset_factory(determine_datareader(dataset))
+    factory = get_dataset_factory(determine_datareader_for_file(image_path))
         
     ## Handle Encoder
     device = get_least_used_gpu()
-    patch_encoder, slide_encoder, transforms, patch_size = get_encoder(args.encoder)
+    patch_encoder, slide_encoder, transforms, patch_size = get_encoder(CYTOMINE_CONFIG['encoder'])
     patch_encoder = patch_encoder.to(device)
     slide_encoder = slide_encoder.to(device)
     from src.networks.patch_encoders import patch_encoder as pe
@@ -115,96 +43,51 @@ def calculate_embeddings(args):
     patch_encoder = pe.PatchEncoder(patch_encoder)
     slide_encoder = se.SlideEncoder(slide_encoder)
     
-    slides = os.listdir(dataset/"IMAGES")
-    count = len(slides)
-    if not (embeddings/"indexed.xml").is_file():
-        print(f"= Found {count} wsi files in {str(dataset)}, starting encoding")
-    else:
-        print(f"= Found {count} wsi files in {str(dataset)}, but dataset is partially processed, checking remaining")
-        resume = minidom.parse(str(embeddings/"indexed.xml"))
-        processed_slides = [f.getAttribute('wsi') for f  in resume.getElementsByTagName("sample")]
-        slides = [f for f in slides if f not in processed_slides]
-        count = len(slides)
-        print(f"= There are {count} wsi files remaining unprocessed in {str(dataset)}, resuming encoding")
-        
+    ## initialize variables for embedding loop
     global_start = time.time()
-    idx = 0
-    width = len(str(count))
     xml_path = embeddings / "indexed.xml"
-    avg_time_per_wsi = 0
-    avg_time_per_gigapixel = 0
-    
-    precision = tc.float32 if args.full_precision else tc.float16
-    with tc.autocast('cuda', precision), tc.no_grad():
-        ## WSI processing loop
-        for slide in slides:
-                tc.cuda.empty_cache()
-                idx += 1
-                print(f"--------------------------({idx:-{width}d}/{count})--------------------------")
-                wsi_path = dataset/"IMAGES"/slide
-                embedding, time_elapsed, sGP = calculate_embedding(precision, factory, device, wsi_path, int(args.level), int(patch_size), int(patch_size), args.remove_bg, transforms, patch_encoder, slide_encoder)
-                avg_time_per_wsi += time_elapsed
-                avg_time_per_gigapixel += sGP
-                emb_pth = embeddings/f"{wsi_path.stem}_embedding.pth"
-                embedding.save_embedding(emb_pth)
-                print(f"""== Saved embedding to {emb_pth}""")
-                
-                if not xml_path.exists():
-                    root = ET.Element("dataset", {
-                        "total": str(count),
-                        "name": dataset.name
-                    })
-                else:
-                    tree = ET.parse(xml_path)
-                    root = tree.getroot()
-                ET.SubElement(root, "sample", {
-                    "wsi": str(wsi_path.name),
-                    "mask": str(None),
-                    "embedding": f"{wsi_path.stem}_embedding.pth"
-                })
-                tree = ET.ElementTree(root)
-                ET.indent(tree, space="\t", level=0) 
-                tree.write(xml_path, encoding="utf-8", xml_declaration=True)
-                
+    precision = tc.float32 if CYTOMINE_CONFIG['full_precision'] else tc.float16
+
+    #-COMPUTE EMBEDDING--------------------    
+    with tc.autocast(device.split(':')[0], precision), tc.no_grad():
+        tc.cuda.empty_cache()
+        embedding, _, sGP = calculate_embedding(precision, factory, device, image_path, CYTOMINE_CONFIG['level'], int(patch_size), int(patch_size), CYTOMINE_CONFIG['remove_bg'], transforms, patch_encoder, slide_encoder)
+        emb_pth = embeddings/f"{image_filename}_embedding.pth"
+        embedding.save_embedding(emb_pth)
+        print(f"""== Saved embedding to {emb_pth}""")
+        
+        if not xml_path.exists():
+            root = ET.Element("dataset")
+        else:
+            tree = ET.parse(xml_path)
+            root = tree.getroot()
+
+        ET.SubElement(root, "sample", {
+            "path": str(image_path),
+            "name": str(image_filename),
+            "id": str(image_id),
+            "embedding": emb_pth.name,
+        })
+        tree = ET.ElementTree(root)
+        ET.indent(tree, space="\t", level=0) 
+        tree.write(xml_path, encoding="utf-8", xml_declaration=True)
+    #-COMPUTE EMBEDDING--------------------   
         
     ## keep in memory and only write in the end to avoid constantly parsing and rewriting the xml on disk
     min, s = divmod(time.time()-global_start, 60)
-    h, min = divmod(min, 60) 
-    print(f"= Indexing {count} files took {h:.0f}h {min:.0f}min {s:.2f}s")
-    print(f"= {args.encoder} takes on avg {(avg_time_per_wsi/count):.2f} s/Img and {(avg_time_per_gigapixel/count):.2f} s/GP")
+    print(f"= Indexing image {image_filename} took {min:.0f}min {s:.2f}s; that is {sGP}s/Gigapixel")
     
-    ## check if all image files have been embedded, if so change the flag in the embeddings_config.xml
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
-    processed = [sample.get("wsi") for sample in root.findall("sample")]
-    if len(processed) == int(root.get("total", "0")):
-        print(f"Successfully processed all WSI in {str(dataset.name)}")
-        ## add to indexer
-        index = Index(embeddings.parent, DIMS[args.encoder]) if not (embeddings.parent/'index.faiss').exists() else Index(embeddings.parent).load()
-        id0, id1 = index.add_dir(embeddings)
-        ## write to xml
-        xml_path = embeddings.parent / "embedding_config.xml"
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-        for ds in root.findall("./datasets/dataset"):
-            if ds.get("name") == str(dataset.name):
-                ds.set("fully_processed", "True")
-                ds.set("indexID0", str(id0))
-                ds.set("indexID1", str(id1))
-        ET.indent(tree, space="\t", level=0)
-        tree.write(xml_path, encoding="utf-8", xml_declaration=True)
-        
-    
+    ## add to index
+    index = Index(embeddings, DIMS[CYTOMINE_CONFIG['encoder']]) if not (embeddings/'index.faiss').exists() else Index(embeddings).load()
+    _, _ = index.add(embedding.unsqueeze(0), [image_filename], False)
+
     ## send response
     result = {
         'status': 'Finished',
-        'info': f"Indexing {count} files took {h:.0f}h {min:.0f}min {s:.2f}s"
+        'info': f"Indexing image {image_filename} took {min:.0f}min {s:.2f}s"
     }
     print("--FINISHED--", json.dumps(result))
-    if hasattr(args, 'return_result'):
-        return result
-    else:
-        return 0
+    return result
 
 def calculate_embedding(precision, factory, device, image, level, patch_size, patch_stride, remove_bg, transforms, patch_encoder, slide_encoder):
     with tc.autocast('cuda' if 'cuda' in device else 'cpu', precision):

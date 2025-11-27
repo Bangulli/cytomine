@@ -146,7 +146,7 @@ class Index:
         for idx, id in zip(idxs, ids):
             self.idx2id_mapping[str(idx)]=id
             self.id2idx_mapping[id]=str(idx)
-            self.metadata[id]=get_meta_with_codes(id.split('/')[-1], meta[0][id.split('/')[-1]], meta[1])
+            if meta: self.metadata[id]=get_meta_with_codes(id.split('/')[-1], meta[0][id.split('/')[-1]], meta[1])
         self.save()
         return idxs[0], idxs[-1]
         

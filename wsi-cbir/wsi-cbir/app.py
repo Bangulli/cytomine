@@ -23,5 +23,5 @@ app = FastAPI(
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
 )
-#app.include_router(router=indexing.router, prefix=PREFIX)
+app.include_router(router=indexing.router, prefix=PREFIX)
 app.include_router(router=retrieval.router, prefix=PREFIX)
