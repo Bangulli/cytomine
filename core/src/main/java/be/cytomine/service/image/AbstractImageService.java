@@ -328,6 +328,7 @@ public class AbstractImageService extends ModelService {
         deleteDependentCompanionFile((AbstractImage)domain, transaction, task);
         deleteDependentAttachedFile((AbstractImage)domain, transaction, task);
         deleteDependentNestedImageInstance((AbstractImage)domain, transaction, task);
+        deleteDependentImageIndex((AbstractImage)domain, transaction, task);
     }
 
     private void  deleteDependentAbstractSlice(AbstractImage ai, Transaction transaction, Task task) {
@@ -365,6 +366,10 @@ public class AbstractImageService extends ModelService {
         for(NestedImageInstance nestedImageInstance : nestedImageInstances) {
             nestedImageInstanceRepository.delete(nestedImageInstance);
         }
+    }
+
+    private void deleteDependentImageIndex(AbstractImage ai, Transaction transaction,Task task) {
+        wsiRetrievalService.removeImage(ai);
     }
 
     protected void afterAdd(CytomineDomain domain, CommandResponse response) {

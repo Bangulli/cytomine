@@ -96,4 +96,19 @@ public class WsiRetrievalService {
 
         return restTemplate.exchange(url, HttpMethod.POST, null, String.class);
     }
+
+    public ResponseEntity<String> removeImage(AbstractImage image) {
+        URI url = UriComponentsBuilder
+            .fromHttpUrl(getInternalCbirURL())
+            .path("/api/rm")
+            .queryParam("image_id", image.getId())
+            .queryParam("path", image.getPath())
+            .queryParam("filename", image.getOriginalFilename())
+            .build()
+            .toUri();
+
+        log.debug("Remove index for image {}", image.getId());
+
+        return restTemplate.exchange(url, HttpMethod.POST, null, String.class);
+    }
 }

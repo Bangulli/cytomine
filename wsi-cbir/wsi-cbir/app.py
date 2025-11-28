@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 ### External Imports ###
 from fastapi import FastAPI
 ### Internal Imports ###
-from api import indexing, retrieval
+from api import indexing, retrieval, removal
 ########################
 @asynccontextmanager
 async def lifespan(local_app: FastAPI) -> AsyncGenerator[None, None]:
@@ -25,3 +25,4 @@ app = FastAPI(
 )
 app.include_router(router=indexing.router, prefix=PREFIX)
 app.include_router(router=retrieval.router, prefix=PREFIX)
+app.include_router(router=removal.router, prefix=PREFIX)

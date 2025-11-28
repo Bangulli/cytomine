@@ -146,9 +146,29 @@ class Index:
         for idx, id in zip(idxs, ids):
             self.idx2id_mapping[str(idx)]=id
             self.id2idx_mapping[id]=str(idx)
-            if meta: self.metadata[id]=get_meta_with_codes(id.split('/')[-1], meta[0][id.split('/')[-1]], meta[1])
+            ## metadata not available in cytomine for now.
+            self.metadata[id]=meta#get_meta_with_codes(id.split('/')[-1], meta[0][id.split('/')[-1]], meta[1])
         self.save()
         return idxs[0], idxs[-1]
+    
+    def rm(self, ids):
+        """Remove embedding data from the index by id
+
+        Args:
+            ids (list): A list of the ID strings of the corresponding images
+
+        Returns:
+            None
+        """
+        for id in ids:
+            if id in list(self.id2idx_mapping.keys()):
+                idx = self.id2idx_mapping[id]
+                id_selector = faiss.IDSelectorRange(idx, idx + 1)
+                self.index.remove_ids(id_selector)
+                del self.metadata[id]
+                del self.idx2id_mapping[str(idx)]
+                del self.id2idx_mapping[id]
+        self.save()
         
     def add_dir(self, dir):
         """Add a directory of embeddings into the index DB. Is meant to be run on a dataset subdirectory of an embedding directory in src.cli_methods.indexing
