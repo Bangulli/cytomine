@@ -31,11 +31,11 @@ def remove_embedding_for_image(path, filename, image_id):
     embeddings = pl.Path(CYTOMINE_CONFIG['embeddings'])
 
     xml_path = embeddings / "indexed.xml"
-    emb_pth = embeddings/f"{image_filename}_embedding.pth"
+    emb_pth = embeddings/f"{image_id}_embedding.pth"
     
     ## remove from index
     index = Index(embeddings).load()
-    index.rm([image_filename])
+    index.rm([image_id])
     os.remove(emb_pth)
     
     ## remove from xml

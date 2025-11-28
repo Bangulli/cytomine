@@ -52,7 +52,7 @@ def calculate_embedding_for_image(path, filename, image_id):
     with tc.autocast(device.split(':')[0], precision), tc.no_grad():
         tc.cuda.empty_cache()
         embedding, _, sGP = calculate_embedding(precision, factory, device, image_path, CYTOMINE_CONFIG['level'], int(patch_size), int(patch_size), CYTOMINE_CONFIG['remove_bg'], transforms, patch_encoder, slide_encoder)
-        emb_pth = embeddings/f"{image_filename}_embedding.pth"
+        emb_pth = embeddings/f"{image_id}_embedding.pth"
         embedding.save_embedding(emb_pth)
         print(f"""== Saved embedding to {emb_pth}""")
         
@@ -79,7 +79,7 @@ def calculate_embedding_for_image(path, filename, image_id):
     
     ## add to index
     index = Index(embeddings, DIMS[CYTOMINE_CONFIG['encoder']]) if not (embeddings/'index.faiss').exists() else Index(embeddings).load()
-    _, _ = index.add(embedding.unsqueeze(0), [image_filename], False)
+    _, _ = index.add(embedding.unsqueeze(0), [image_id], False)
 
     ## send response
     result = {
