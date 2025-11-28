@@ -164,7 +164,7 @@
 
           <li v-if="isPanelDisplayed('content-based-image-retrieval') && canEdit">
             <a @click="togglePanel('content-based-image-retrieval')" :class="{active: activePanel === 'content-based-image-retrieval'}">
-              <i class="fas fa-check-circle"></i>
+              <i class="fas fa-images"></i>
             </a>
             <wsi-cbir-panel class="panel-options" v-show="activePanel === 'content-based-image-retrieval'" :index="index" />
           </li>

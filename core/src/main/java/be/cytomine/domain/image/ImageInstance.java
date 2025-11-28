@@ -169,9 +169,7 @@ public class ImageInstance extends CytomineDomain {
         return returnArray;
     }
 
-
-    // Made public to be available in js to search images with wsi-cbir
-    public Long getBaseImageId() {
+    private Long getBaseImageId() {
         return Optional.ofNullable(this.getBaseImage()).map(CytomineDomain::getId).orElse(null);
     }
 
