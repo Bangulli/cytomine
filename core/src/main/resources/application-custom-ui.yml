@@ -152,6 +152,9 @@ application:
       project-explore-annotations-list:
         ADMIN_PROJECT: true
         CONTRIBUTOR_PROJECT: true
+      project-explore-content-based-image-retrieval:
+        ADMIN_PROJECT: true
+        CONTRIBUTOR_PROJECT: true
       project-tools-main:
         ADMIN_PROJECT: true
         CONTRIBUTOR_PROJECT: true
