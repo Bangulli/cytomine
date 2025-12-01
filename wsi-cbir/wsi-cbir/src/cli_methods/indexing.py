@@ -79,7 +79,7 @@ def calculate_embedding_for_image(path, filename, image_id):
     
     ## add to index
     index = Index(embeddings, DIMS[CYTOMINE_CONFIG['encoder']]) if not (embeddings/'index.faiss').exists() else Index(embeddings).load()
-    _, _ = index.add(embedding.unsqueeze(0), [image_id], False)
+    _, _ = index.add(embedding.unsqueeze(0), [image_id], False, image_filename)
 
     ## send response
     result = {

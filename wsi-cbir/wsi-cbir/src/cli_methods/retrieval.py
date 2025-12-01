@@ -49,13 +49,13 @@ def find_k_similar(query: str | int, k: int, metadata: dict=None):
 
         else:
             print(f"= Searching entire database of size {index.ntotal}")
-            best_imgs, best_sims = index.search(np.expand_dims(query_embedding, 0), int(k))
+            best_imgs, best_sims, best_fns = index.search(np.expand_dims(query_embedding, 0), int(k))
 
         result = {
             "query": query,
             "metadata-filter": metadata,
             "embedding_database": str(embeddings),
-            "similarities": list(zip(best_imgs, best_sims))
+            "similarities": list(zip(best_imgs, best_sims, best_fns))
         }
         return result
 

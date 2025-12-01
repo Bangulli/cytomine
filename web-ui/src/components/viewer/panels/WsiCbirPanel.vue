@@ -61,7 +61,7 @@
             <tbody>
               <tr v-for="row in similarityRows" :key="row.id">
                 <td>{{ row.rank }}</td>
-                <td>{{ row.id }}</td>
+                <td>{{ row.name }}</td>
                 <td>{{ row.distance.toFixed(4) }}</td>
                 <td>
                   <button
@@ -125,10 +125,11 @@ export default {
 
       // similarities is of form: [ [ "IMAGE_id", distance ], ... ]
       // skip the first element (the query image itself)
-      return this.data.similarities.slice(1).map(([id, distance], idx) => ({
+      return this.data.similarities.slice(1).map(([id, distance, name], idx) => ({
         rank: idx + 1,
-        id,
+        name,
         distance,
+        id,
       }));
     },
   },
@@ -142,7 +143,7 @@ export default {
         organ: this.organ || '',
         species: this.species || '',
         diagnosis: this.diagnosis || '',
-        k: this.k || 3,
+        k: this.k + 1 || 3,
       };
 
       this.isLoading = true;
@@ -159,24 +160,24 @@ export default {
         this.isLoading = false;
       }
     },
-    async findImage(name) {
+    async findImage(id) {
       let images = (await ImageInstanceCollection.fetchAll({
         filterKey: 'project',
         filterValue: this.project.id,
       })).array;
-      return images.find(img => img.originalFilename === name);
+      return images.find(img => Number(img.baseImage) === Number(id)) || null;
     },
     async addImage(imageId) {
       console.log('trying to load another image');
-      // try {
-      await this.image.fetch(); // refetch image to ensure we have latest version
-      let slice = await this.image.fetchReferenceSlice();
-      let imgToLoad = await this.findImage(imageId);
-      await this.$store.dispatch(this.viewerModule + 'addImage', {imgToLoad, slices: [slice]});
-      // } catch (error) {
-      //   console.log(error);
-      //   this.$notify({type: 'error', text: this.$t('notif-error-add-viewer-image')});
-      // }
+      try {
+        const imgToLoad = await this.findImage(imageId);
+        await imgToLoad.fetch();
+        let slice = await imgToLoad.fetchReferenceSlice();
+        await this.$store.dispatch(this.viewerModule + 'addImage', {image: imgToLoad, slices: [slice]});
+      } catch (error) {
+        console.log(error);
+        this.$notify({type: 'error', text: this.$t('notif-error-add-viewer-image')});
+      }
     },
   },
 };

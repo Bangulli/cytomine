@@ -24,6 +24,7 @@ class Index:
         self.index = faiss.IndexIDMap(self.index)
         self.idx2id_mapping = {}
         self.id2idx_mapping = {}
+        self.idx2fn_mapping = {}
         self.metadata = {}
         
         
@@ -40,7 +41,8 @@ class Index:
         dists, idxs = self.index.search(query, k)
         dists, idxs = dists.squeeze().tolist(), idxs.squeeze().tolist()
         ids = map(self.idx2id_mapping.__getitem__, [str(i) for i in idxs])
-        return ids, dists
+        fns = map(self.idx2fn_mapping.__getitem__, [str(i) for i in idxs])
+        return ids, dists, fns
     
     def search_subset(self, query, k, ids):
         """Searches a subset of the index, defined by the ids, with a query and returns k best results, uses Euclidean distance
@@ -62,7 +64,8 @@ class Index:
         dists, idxs = self.index.search(query, k, params=params)
         dists, idxs = dists.squeeze().tolist(), idxs.squeeze().tolist()
         ids = map(self.idx2id_mapping.__getitem__, [str(i) for i in idxs])
-        return ids, dists
+        fns = map(self.idx2fn_mapping.__getitem__, [str(i) for i in idxs])
+        return ids, dists, fns
         
     def _get_ids_to_search(self, ids):
         """Get a list of indexes for the list of ID strings
@@ -131,7 +134,7 @@ class Index:
         print(f'== {len(subset)} samples fulfill the filter conditions')
         return subset
         
-    def add(self, samples, ids, meta): # samples are the embeddings arrays, ids are the corresponding image paths
+    def add(self, samples, ids, meta, filename): # samples are the embeddings arrays, ids are the corresponding image paths
         """Add embedding data into the index
 
         Args:
@@ -146,6 +149,7 @@ class Index:
         for idx, id in zip(idxs, ids):
             self.idx2id_mapping[str(idx)]=id
             self.id2idx_mapping[id]=str(idx)
+            self.idx2fn_mapping[str(idx)]=filename
             ## metadata not available in cytomine for now.
             self.metadata[id]=meta#get_meta_with_codes(id.split('/')[-1], meta[0][id.split('/')[-1]], meta[1])
         self.save()
@@ -168,6 +172,7 @@ class Index:
                 del self.metadata[id]
                 del self.idx2id_mapping[str(idx)]
                 del self.id2idx_mapping[id]
+                del self.idx2fn_mapping[str(idx)]
         self.save()
         
     def add_dir(self, dir):
@@ -210,6 +215,8 @@ class Index:
         self.id2idx_mapping = {v: int(k) for k, v in self.idx2id_mapping.items()}
         with open(self.path/'metadata.json', 'r') as file:
             self.metadata=json.load(file)
+        with open(self.path/'filenames.json', 'r') as file:
+            self.idx2fn_mapping=json.load(file)
         return self
     
     def save(self):
@@ -222,4 +229,8 @@ class Index:
         with open(self.path/'metadata.json', 'w') as file:
             file.seek(0)
             json.dump(self.metadata, file, indent=4)
+        with open(self.path/'filenames.json', 'w') as file:
+            file.seek(0)
+            json.dump(self.idx2fn_mapping, file, indent=4)
+            
             

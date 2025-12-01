@@ -676,13 +676,13 @@ public class ImageInstanceService extends ModelService {
         Query query = getEntityManager().createNativeQuery(request, Tuple.class);
         query.setParameter("id", user.getId());
         List<Tuple> resultList = query.getResultList();
-
         List<Map<String, Object>> results = new ArrayList<>();
         for (Tuple tuple : resultList) {
             Map<String, Object> line = new LinkedHashMap<>();
             line.put("id", tuple.get("id"));
             line.put("projectName", tuple.get("project_name"));
             line.put("project", tuple.get("project_id"));
+            line.put("baseImage", tuple.get("base_image_id"));
             if (tuple.get("project_blind") != null && (boolean) tuple.get("project_blind")) {
                 line.put("blindedName", tuple.get("base_image_id"));
             }
@@ -691,6 +691,7 @@ public class ImageInstanceService extends ModelService {
             }
             results.add(line);
         }
+        //log.debug("Results {}", results);
         return results;
     }
 

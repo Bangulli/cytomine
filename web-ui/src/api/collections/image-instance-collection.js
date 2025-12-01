@@ -46,7 +46,7 @@ export default class ImageInstanceCollection extends Collection {
    * @param {number} [max=0]    The maximum number of items to retrieve
    * @param {number} [offset=0] The offset
    *
-   * @returns {Array<{id: Number, filename: String, originalFilename: String, projectName: String, project: Number}>}
+   * @returns {Array<{id: Number, filename: String, originalFilename: String, projectName: String, project: Number, baseImage: String}>}
    *          The list of images (light format)
    */
   static async fetchAllLight({max = 0, offset = 0} = {}) {
