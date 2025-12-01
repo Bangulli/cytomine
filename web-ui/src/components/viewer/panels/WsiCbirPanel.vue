@@ -2,9 +2,7 @@
   <div>
     <div class="wsi-retrieval">
       <h1>{{ $t('wsi similarity search') }}</h1>
-      <a @click="closeRetrieval()">
-        <span class="fas fa-times-circle"></span>
-      </a>
+
     </div>
 
     <div>
