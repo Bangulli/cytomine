@@ -21,7 +21,7 @@ class Index:
         """
         self.path = pl.Path(path)
         self.index = faiss.IndexFlatL2(dims)
-        self.index = faiss.IndexIDMap(self.index)
+        self.index = faiss.IndexIDMap2(self.index)
         self.idx2id_mapping = {}
         self.id2idx_mapping = {}
         self.idx2fn_mapping = {}
@@ -167,8 +167,7 @@ class Index:
         for id in ids:
             if id in list(self.id2idx_mapping.keys()):
                 idx = self.id2idx_mapping[id]
-                id_selector = faiss.IDSelectorRange(idx, idx + 1)
-                self.index.remove_ids(id_selector)
+                self.index.remove_ids(np.asarray([idx]))
                 del self.metadata[id]
                 del self.idx2id_mapping[str(idx)]
                 del self.id2idx_mapping[id]
