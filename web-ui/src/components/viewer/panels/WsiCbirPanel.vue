@@ -8,24 +8,63 @@
     <div>
       <h5>{{ $t('Search Parameters') }}</h5>
 
-      <!-- Staining For now unavailable
-      <b-field label="Staining">
-        <b-input v-model="staining" placeholder="Staining (optional)"></b-input>
+      <b-field>
+        <template #label>
+          Staining (optional)
+          <b-tooltip multilined label="Staining metadata filtration. Takes the codes or string values of stainings from SNOMED as input. You can combine multiple commands by AND gates with + or OR gates with |. A value can be excluded by adding a ! in front of the parameter. Example for returning only H&E or Hematoxylin & Antibody stained images: 36879007 AND 12710003 OR 12710003 AND Antibody">
+            <b-icon pack="fas" icon="info-circle" />
+          </b-tooltip>
+        </template>
+
+        <b-input
+          v-model="staining"
+          placeholder="Staining (coming soon)"
+        />
       </b-field>
 
+      <!--<b-field>
+        <template #label>
+          Organ (optional)
+          <b-tooltip label="This feature is planned but not yet available.">
+            <b-icon pack="fas" icon="info-circle" />
+          </b-tooltip>
+        </template>
 
-      <b-field label="Organ">
-        <b-input v-model="organ" placeholder="Organ (optional)"></b-input>
+        <b-input
+          v-model="organ"
+          placeholder="Organ (coming soon)"
+          disabled
+        />
       </b-field>
 
-    
-      <b-field label="Species">
-        <b-input v-model="species" placeholder="Species (optional)"></b-input>
+      <b-field>
+        <template #label>
+          Species (optional)
+          <b-tooltip label="This feature is planned but not yet available.">
+            <b-icon pack="fas" icon="info-circle" />
+          </b-tooltip>
+        </template>
+
+        <b-input
+          v-model="species"
+          placeholder="Species (coming soon)"
+          disabled
+        />
       </b-field>
 
+      <b-field>
+        <template #label>
+          Diagnosis
+          <b-tooltip label="This feature is planned but not yet available.">
+            <b-icon pack="fas" icon="info-circle" />
+          </b-tooltip>
+        </template>
 
-      <b-field label="Diagnosis">
-        <b-input v-model="diagnosis" placeholder="Diagnosis (optional)"></b-input>
+        <b-input
+          v-model="diagnosis"
+          placeholder="Diagnosis (coming soon)"
+          disabled
+        />
       </b-field> -->
 
       <!-- k -->
@@ -93,10 +132,9 @@ export default {
   },
   data() {
     return {
-      data: null,       // will store the raw response from the service
-      isLoading: false, // controls button disabled + spinner
+      data: null,
+      isLoading: false, 
 
-      // filters / inputs
       staining: '',
       organ: '',
       species: '',

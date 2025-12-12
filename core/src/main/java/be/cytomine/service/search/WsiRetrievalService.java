@@ -60,11 +60,10 @@ public class WsiRetrievalService {
             .toUriString();
         log.debug(url);
 
-        ResponseEntity<String> stringResponse = restTemplate.exchange(url, HttpMethod.GET, null, String.class);
-        log.debug("Raw response body: {}", stringResponse.getBody());
+        // ResponseEntity<String> stringResponse = restTemplate.exchange(url, HttpMethod.GET, null, String.class);
+        // log.debug("Raw response body: {}", stringResponse.getBody());
 
         ResponseEntity<SearchResponse> response = restTemplate.exchange(url, HttpMethod.GET, null, SearchResponse.class);
-
         log.debug("Receiving response {}", response);
 
         SearchResponse searchResponse = response.getBody();
