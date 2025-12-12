@@ -23,7 +23,7 @@ from src.config import CYTOMINE_CONFIG
 ########################
     
 #------------------------------------------------ INDEXING ENTRYPOINT ------------------------------------------------#    
-def remove_embedding_for_image(path, filename, image_id):
+def remove_embedding_for_image(index: Index, path, filename, image_id):
     ## Handle file I/O 
     image_path = pl.Path('/images')/path
     image_filename = filename
@@ -34,7 +34,6 @@ def remove_embedding_for_image(path, filename, image_id):
     emb_pth = embeddings/f"{image_id}_embedding.pth"
     
     ## remove from index
-    index = Index(embeddings).load()
     index.rm([image_id])
     os.remove(emb_pth)
     

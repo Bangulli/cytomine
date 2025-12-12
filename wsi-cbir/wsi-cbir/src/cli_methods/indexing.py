@@ -23,7 +23,7 @@ from src.config import CYTOMINE_CONFIG
 ########################
     
 #------------------------------------------------ INDEXING ENTRYPOINT ------------------------------------------------#    
-def calculate_embedding_for_image(path, filename, image_id):
+def calculate_embedding_for_image(index, path, filename, image_id):
     ## Handle file I/O 
     image_path = pl.Path('/images')/path
     image_filename = filename
@@ -78,7 +78,6 @@ def calculate_embedding_for_image(path, filename, image_id):
     print(f"= Indexing image {image_filename} took {min:.0f}min {s:.2f}s; that is {sGP}s/Gigapixel")
     
     ## add to index
-    index = Index(embeddings, DIMS[CYTOMINE_CONFIG['encoder']]) if not (embeddings/'index.faiss').exists() else Index(embeddings).load()
     _, _ = index.add(embedding.unsqueeze(0), [image_id], False, image_filename)
 
     ## send response

@@ -21,7 +21,7 @@ from src.config import CYTOMINE_CONFIG
 ########################
         
 #------------------------------------------------ RETRIEVAL ENTRYPOINT ------------------------------------------------#        
-def find_k_similar(query: str | int, k: int, metadata: dict=None):
+def find_k_similar(index: Index, query: str | int, k: int, metadata: dict=None):
     if query is None and metadata is None:
         raise RuntimeError(f"Retrieval received neither query nor metadata to perform any search")
     ## Handle dataset path
@@ -37,13 +37,12 @@ def find_k_similar(query: str | int, k: int, metadata: dict=None):
     
     ## Handle subset selection by dataset selection and metadata filtration
     if query:      
-        # Perform search
-        index = Index(embeddings).load()
-        
+        # Perform search        
         if metadata:
             print(f'= Filtering subset by metadata')
             if type(metadata) is dict:
-                subset = index.filter_metadata(metadata, subset if subset else None)
+                subset = index.filter_metadata(metadata, None)
+                best_imgs, best_sims, best_fns = index.search_subset(np.expand_dims(query_embedding, 0), int(k), subset)
             else:
                 raise RuntimeError('Metadata filter must be either dict or path to json file')
 

@@ -38,7 +38,7 @@ async def indexing(
     :return: Success message
     :rtype: JSONResponse
     """
-    return JSONResponse(status_code=200, content=calculate_embedding_for_image(path, filename, image_id))
+    return JSONResponse(status_code=200, content=calculate_embedding_for_image(request.app.state.index, path, filename, image_id))
     # try:
     #     return JSONResponse(content=calculate_embedding_for_image(path, filename, image_id))
     # except Exception as e:

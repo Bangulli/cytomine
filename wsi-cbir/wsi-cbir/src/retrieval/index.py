@@ -26,8 +26,7 @@ class Index:
         self.id2idx_mapping = {}
         self.idx2fn_mapping = {}
         self.metadata = {}
-        
-        
+             
     def search(self, query, k):
         """Searches the index with a query and returns k best results, uses Euclidean distance
 
@@ -58,9 +57,6 @@ class Index:
         params = faiss.SearchParametersIVF()
         ids_to_search = self._get_ids_to_search(ids)
         params.sel = faiss.IDSelectorArray(ids_to_search.size, faiss.swig_ptr(ids_to_search))
-        # mask = np.zeros(self.index.ntotal, dtype="int64")
-        # mask[ids_to_search] = 1
-        # params.sel = faiss.IDSelectorBatch(ids_to_search.size, faiss.swig_ptr(mask))
         dists, idxs = self.index.search(query, k, params=params)
         dists, idxs = dists.squeeze().tolist(), idxs.squeeze().tolist()
         ids = map(self.idx2id_mapping.__getitem__, [str(i) for i in idxs])
@@ -131,7 +127,7 @@ class Index:
                 else: is_include.append(False)
                 ### check ors     
             if all(is_include): subset.append(id)
-        print(f'== {len(subset)} samples fulfill the filter conditions')
+        print(f'== {len(subset)} samples fulfill the filter conditions {conditions}')
         return subset
         
     def add(self, samples, ids, meta, filename): # samples are the embeddings arrays, ids are the corresponding image paths

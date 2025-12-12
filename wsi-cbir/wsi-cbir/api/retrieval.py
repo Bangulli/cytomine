@@ -39,11 +39,12 @@ async def retrieval(
         JSONResponse: A JSON file containing the query image path and the path to the k best matches
     """
     meta = {}
-    if staining: meta['staining']=staining ## skip if empty
-    if organ: meta['organ']=organ ## skip if empty
-    if species: meta['species']=species ## skip if empty
-    if diagnosis: meta['diagnosis']=diagnosis ## skip if empty
-    return JSONResponse(status_code=200, content=find_k_similar(query, k, meta if any(meta) else None))
+    # NOTE: Index expects AND combinations to be declared by '&' but this character is invalid for URLs so it is replaced by + in cytomine and exchanged here.
+    if staining: meta['staining']=staining.replace('AND', '&').replace('OR', '|') ## skip if empty
+    if organ: meta['organ']=organ.replace('AND', '&').replace('OR', '|') ## skip if empty
+    if species: meta['species']=species.replace('AND', '&').replace('OR', '|') ## skip if empty
+    if diagnosis: meta['diagnosis']=diagnosis.replace('AND', '&').replace('OR', '|') ## skip if empty
+    return JSONResponse(status_code=200, content=find_k_similar(request.app.state.index, query, k, meta if any(meta) else None))
     # try:
     #     return JSONResponse(status_code=200, content=find_k_similar(query, k, meta if any(meta) else None))
     # except Exception as e:
