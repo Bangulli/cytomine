@@ -221,6 +221,7 @@ services:
         ipv4_address: 172.16.238.12
 
   wsi-cbir:
+    stop_grace_period: 2m
     image: cytomine/wsi-cbir:latest
     restart: unless-stopped
     #depends_on: NOTE: for now based ont json/dicts

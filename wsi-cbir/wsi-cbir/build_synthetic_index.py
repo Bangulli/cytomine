@@ -247,7 +247,7 @@ class Index:
             
 if __name__ == '__main__':    
     d = 768                           # dimension
-    nb = 3000000                      # database size
+    nb = 1000000                      # database size
     iters = 20                        # set to 20 because subset search is very slow
     os.makedirs(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings'), exist_ok=True)
     index = Index(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings'), DIMS[CYTOMINE_CONFIG['encoder']]) if not (pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings/index.faiss')).exists() else Index(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings')).load()

@@ -11,20 +11,39 @@ from src.networks.encoder_mgmt import DIMS
 import pathlib as pl
 import sched
 import time
+import asyncio
 ########################
 @asynccontextmanager
 async def lifespan(local_app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan of the app."""
     local_app.state.index = Index(pl.Path(CYTOMINE_CONFIG['embeddings']), DIMS[CYTOMINE_CONFIG['encoder']]) if not (pl.Path(CYTOMINE_CONFIG['embeddings'])/'index.faiss').exists() else Index(pl.Path(CYTOMINE_CONFIG['embeddings'])).load()
-    index_scheduler = sched.scheduler(time.time, time.sleep)
-    def save():
-        index_scheduler.enter(CYTOMINE_CONFIG['index_saving_interval'], 1, save)
-        local_app.state.index.save()
-    index_scheduler.enter(CYTOMINE_CONFIG['index_saving_interval'], 1, save)
-    index_scheduler.run(False)
+    stop_event = asyncio.Event()
+
+    async def periodic_save():
+        interval = CYTOMINE_CONFIG["index_saving_interval"]
+        while not stop_event.is_set():
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=interval)
+            except asyncio.TimeoutError:
+                # interval elapsed -> save
+                # if save() is heavy/blocking, run it in a thread:
+                await asyncio.to_thread(local_app.state.index.save)
+
+    task = asyncio.create_task(periodic_save())
+
     yield
-    map(index_scheduler.cancel, index_scheduler.queue)
+
+    stop_event.set()
+    task.cancel()
+    # best-effort wait for task to stop
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+    # final save on shutdown
     local_app.state.index.save()
+
 
 PREFIX = "/api"
 
