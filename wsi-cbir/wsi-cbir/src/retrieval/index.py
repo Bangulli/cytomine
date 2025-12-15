@@ -85,10 +85,12 @@ class Index:
         Returns:
             list: The filtered ids
         """
+        print(f"Building subset according to {conditions}")
         subset = []
         if ids is None: ids=list(self.metadata.keys())
         for id in ids:
             id_meta = self.metadata[id]
+            if type(id_meta)==bool: is_include = [True]; continue ## TODO: Remove this line, its for testing only!
             is_include = []
             for k, requested in conditions.items():
                 ### check ors
@@ -99,7 +101,7 @@ class Index:
                     AND = or_condition.strip().split('&')
                     and_is_true = []
                     for and_condition in AND:
-                        stripped = and_condition.strip()
+                        stripped = and_condition.strip().lower()
                         if stripped.startswith('!'):
                             ### check nots
                             if f'{k}_code' in list(id_meta.keys()):
@@ -147,8 +149,9 @@ class Index:
             self.id2idx_mapping[id]=str(idx)
             self.idx2fn_mapping[str(idx)]=filename
             ## metadata not available in cytomine for now.
-            self.metadata[id]=meta#get_meta_with_codes(id.split('/')[-1], meta[0][id.split('/')[-1]], meta[1])
-        self.save()
+            ## metadata stored in lower for homogenety
+            self.metadata[id]=meta if type(meta)==bool else meta.lower() #get_meta_with_codes(id.split('/')[-1], meta[0][id.split('/')[-1]], meta[1])
+        #self.save() NOTE index is saved at the exit of the FastAPI asynccontextmanager
         return idxs[0], idxs[-1]
     
     def rm(self, ids):
@@ -168,7 +171,7 @@ class Index:
                 del self.idx2id_mapping[str(idx)]
                 del self.id2idx_mapping[id]
                 del self.idx2fn_mapping[str(idx)]
-        self.save()
+        #self.save() NOTE index is saved at the exit of the FastAPI asynccontextmanager
         
     def add_dir(self, dir):
         """Add a directory of embeddings into the index DB. Is meant to be run on a dataset subdirectory of an embedding directory in src.cli_methods.indexing
@@ -204,6 +207,7 @@ class Index:
         Returns:
             Index: the loaded instance of the object
         """
+        print(f"@index loading from {self.path}")
         self.index=faiss.read_index(str(self.path/'index.faiss'))
         with open(self.path/'mapping.json', 'r') as file:
             self.idx2id_mapping=json.load(file)
@@ -227,5 +231,5 @@ class Index:
         with open(self.path/'filenames.json', 'w') as file:
             file.seek(0)
             json.dump(self.idx2fn_mapping, file, indent=4)
-            
+        print(f"@index saved to {self.path}")
             

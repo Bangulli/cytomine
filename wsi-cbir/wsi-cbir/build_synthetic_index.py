@@ -1,3 +1,8 @@
+## NOTE IMPORTANT
+## This script injects bogus data into a wsi-cbir index.
+## Its sole purpose is to perform large scale tests, it is to be removed from the deployed version.
+## Usage: Run before docker compose up -d
+
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "."))
@@ -8,9 +13,7 @@ import faiss
 import numpy as np
 import json
 import pathlib as pl
-import torch
 import random
-import tqdm
 import time
 from src.config import CYTOMINE_CONFIG
 from src.networks.encoder_mgmt import DIMS
@@ -178,7 +181,7 @@ class Index:
         for idx, id in zip(idxs, ids):
             self.idx2id_mapping[str(idx)]=id
             self.id2idx_mapping[id]=str(idx)
-            self.metadata[id]={'staining':random.choice([['36879007', '12710003'], ['Antibody', '12710003'], ['Van Gieson Stain']]),
+            self.metadata[id]={'staining':random.choice([['36879007', '12710003'], ['antibody', '12710003'], ['van gieson stain']]),
                                'diagnosis':random.choice(['normal', 'cancer', 'hypotrophy']),
                 }
             self.idx2fn_mapping[str(idx)]=get_name(self.metadata[id]['staining'])
@@ -246,8 +249,8 @@ if __name__ == '__main__':
     d = 768                           # dimension
     nb = 3000000                      # database size
     iters = 20                        # set to 20 because subset search is very slow
-    
-    index = Index(pl.Path(CYTOMINE_CONFIG['embeddings']), DIMS[CYTOMINE_CONFIG['encoder']]) if not (pl.Path(CYTOMINE_CONFIG['embeddings'])/'index.faiss').exists() else Index(pl.Path(CYTOMINE_CONFIG['embeddings'])).load()
+    os.makedirs(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings'), exist_ok=True)
+    index = Index(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings'), DIMS[CYTOMINE_CONFIG['encoder']]) if not (pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings/index.faiss')).exists() else Index(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings')).load()
     np.random.seed(1234)             # make reproducible
     xb = np.random.random((nb, d)).astype('float32')
     xb[:, 0] += np.arange(nb) / 1000.
