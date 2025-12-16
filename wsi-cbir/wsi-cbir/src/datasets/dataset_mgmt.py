@@ -31,6 +31,7 @@ def get_dataset_factory(key):
     return factory
 
 def determine_datareader(path):
+    if not path.exists: raise RuntimeError(f"Filepath {path} doesnt exist.")
     if all([(path/'IMAGES'/f).is_dir() for f in os.listdir(path/'IMAGES')]):
         return "wsidicom"
     elif all([(path/'IMAGES'/f).is_file() for f in os.listdir(path/'IMAGES')]):
@@ -38,6 +39,7 @@ def determine_datareader(path):
     else: raise RuntimeError(f"Could not determine datareader as the contents of {str(path/'IMAGES')} is not homogeneous")
     
 def determine_datareader_for_file(path):
+    if not path.exists: raise RuntimeError(f"Filepath {path} doesnt exist.")
     if path.is_dir():
         return "wsidicom"
     elif path.is_file():
