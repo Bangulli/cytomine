@@ -46,7 +46,7 @@ public class WsiRetrievalService {
         return CBIR_API_BASE_PATH;
     }
 
-    public ResponseEntity<String> retrieveSimilarImages(Long k, String query, String datasets, String staining, String organ, String species, String diagnosis) {
+    public ResponseEntity<String> retrieveSimilarImages(Long k, Long query, String datasets, String staining, String organ, String species, String diagnosis) {
         String url = UriComponentsBuilder
             .fromHttpUrl(getInternalCbirURL())
             .path("/api/retrieval")
@@ -96,19 +96,42 @@ public class WsiRetrievalService {
         return restTemplate.exchange(url, HttpMethod.POST, null, String.class);
     }
 
-    public ResponseEntity<SearchResponse> getJob(String jobId) {
+    public ResponseEntity<SearchResponse> getSearchJob(String jobId) {
         URI url = UriComponentsBuilder
             .fromHttpUrl(getInternalCbirURL())
             .path("/api/jobs/{job_id}")
-            .queryParam("job_id", jobId)
-            .build()
+            .buildAndExpand(jobId)
             .toUri();
 
         ResponseEntity<SearchResponse> response = restTemplate.exchange(url, HttpMethod.GET, null, SearchResponse.class);
         log.debug("Receiving response {}", response);
 
         SearchResponse searchResponse = response.getBody();
+        if (searchResponse == null) {
+            log.warn("SearchResponse body is null");
+            return response;
+        }
+
+        log.debug("Query: {}, Index: {}, Storage: {}, Similarities count: {}", 
+            searchResponse.getQuery(), 
+            searchResponse.getIndex(), 
+            searchResponse.getStorage(),
+            searchResponse.getSimilarities() != null ? searchResponse.getSimilarities().size() : 0);
+
         return ResponseEntity.ok(searchResponse);
         
+    }
+
+    public ResponseEntity<SearchResponse> getJob(String jobId) {
+        URI url = UriComponentsBuilder
+            .fromHttpUrl(getInternalCbirURL())
+            .path("/api/jobs/{job_id}")
+            .buildAndExpand(jobId)
+            .toUri();
+
+        ResponseEntity<SearchResponse> response = restTemplate.exchange(url, HttpMethod.GET, null, SearchResponse.class);
+        log.debug("Receiving response {}", response);
+
+        return response;
     }
 }
