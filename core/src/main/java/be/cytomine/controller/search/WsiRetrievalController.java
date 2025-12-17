@@ -24,7 +24,7 @@ public class WsiRetrievalController {
     private final WsiRetrievalService retrievalService;
 
     @GetMapping("/wsi-cbir/retrieval")
-    public ResponseEntity<SearchResponse> retrieveSimilarImages(
+    public ResponseEntity<String> retrieveSimilarImages(
         @RequestParam(value = "k") Long k,
         @RequestParam(value = "query") String query,
         @RequestParam(value = "datasets") String datasets,
@@ -38,4 +38,14 @@ public class WsiRetrievalController {
 
         return retrievalService.retrieveSimilarImages(k, query, datasets, staining, organ, species, diagnosis);
     }
+
+    @GetMapping("/wsi-cbir/jobs/{jobId}")
+    public ResponseEntity<SearchResponse> getJob(
+        @RequestParam(value = "jobId") String jobId
+    ) {
+        log.debug("Retrieve job {}", jobId);
+
+        return retrievalService.getJob(jobId);
+    }
+
 }

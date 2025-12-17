@@ -1,23 +1,64 @@
-### Ecosystem Imports ###
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable, Awaitable
 from contextlib import asynccontextmanager
-### External Imports ###
-from fastapi import FastAPI
-### Internal Imports ###
-from api import indexing, retrieval, removal
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any, Optional
+
+import asyncio
+import pathlib as pl
+from fastapi import FastAPI, Request
+
+from api import indexing, retrieval, removal, jobs
 from src.retrieval.index import Index
 from src.config import CYTOMINE_CONFIG
 from src.networks.encoder_mgmt import DIMS
-import pathlib as pl
-import sched
-import time
-import asyncio
-########################
+
+
 @asynccontextmanager
-async def lifespan(local_app: FastAPI) -> AsyncGenerator[None, None]:
-    """Lifespan of the app."""
-    local_app.state.index = Index(pl.Path(CYTOMINE_CONFIG['embeddings']), DIMS[CYTOMINE_CONFIG['encoder']]) if not (pl.Path(CYTOMINE_CONFIG['embeddings'])/'index.faiss').exists() else Index(pl.Path(CYTOMINE_CONFIG['embeddings'])).load()
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    # --- load index ---
+    emb_path = pl.Path(CYTOMINE_CONFIG["embeddings"])
+    dims = DIMS[CYTOMINE_CONFIG["encoder"]]
+    app.state.index = (
+        Index(emb_path, dims)
+        if not (emb_path / "index.faiss").exists()
+        else Index(emb_path).load()
+    )
+
+    # --- shared state for jobs ---
+    app.state.jobs: dict[str, jobs.Job] = {}
+    app.state.queue: asyncio.Queue[Optional[jobs.QueueItem]] = asyncio.Queue(maxsize=CYTOMINE_CONFIG.get("queue_maxsize", 0) or 0)
+
+    # This lock ensures: only one “index-touching” thing at a time (jobs + periodic save)
+    app.state.index_lock = asyncio.Lock()
+
     stop_event = asyncio.Event()
+    app.state.stop_event = stop_event
+
+    async def worker_loop():
+        while True:
+            item = await app.state.queue.get()
+            if item is None:
+                app.state.queue.task_done()
+                break
+
+            job = app.state.jobs[item.job_id]
+            job.state = jobs.JobState.running
+            job.started_at = datetime.now(timezone.utc)
+
+            try:
+                # If job work is CPU/IO heavy, do it in a thread to keep the event loop responsive
+                # Also serialize access to the index
+                async with app.state.index_lock:
+                    job.result = await item.coro_factory()
+                job.state = jobs.JobState.done
+            except Exception as e:
+                job.state = jobs.JobState.failed
+                job.error = repr(e)
+            finally:
+                job.finished_at = datetime.now(timezone.utc)
+                app.state.queue.task_done()
 
     async def periodic_save():
         interval = CYTOMINE_CONFIG["index_saving_interval"]
@@ -25,24 +66,38 @@ async def lifespan(local_app: FastAPI) -> AsyncGenerator[None, None]:
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=interval)
             except asyncio.TimeoutError:
-                # interval elapsed -> save
-                # if save() is heavy/blocking, run it in a thread:
-                await asyncio.to_thread(local_app.state.index.save)
+                async with app.state.index_lock:
+                    await asyncio.to_thread(app.state.index.save)
 
-    task = asyncio.create_task(periodic_save())
+    worker_task = asyncio.create_task(worker_loop(), name="job-worker")
+    save_task = asyncio.create_task(periodic_save(), name="periodic-save")
 
     yield
 
+    # --- shutdown ---
     stop_event.set()
-    task.cancel()
-    # best-effort wait for task to stop
+
+    # stop worker via sentinel
     try:
-        await task
-    except asyncio.CancelledError:
+        await app.state.queue.put(None)
+    except Exception:
         pass
 
-    # final save on shutdown
-    local_app.state.index.save()
+    for t in (save_task, worker_task):
+        t.cancel()
+    for t in (save_task, worker_task):
+        try:
+            await t
+        except asyncio.CancelledError:
+            pass
+
+    # final save
+    try:
+        async with app.state.index_lock:
+            await asyncio.to_thread(app.state.index.save)
+    except Exception:
+        pass
+
 
 
 PREFIX = "/api"
@@ -61,3 +116,4 @@ app = FastAPI(
 app.include_router(router=indexing.router, prefix=PREFIX)
 app.include_router(router=retrieval.router, prefix=PREFIX)
 app.include_router(router=removal.router, prefix=PREFIX)
+app.include_router(router=jobs.router, prefix=PREFIX)

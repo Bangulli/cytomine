@@ -143,6 +143,10 @@ export default {
     };
   },
   computed: {
+    sleep() {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      return sleep;
+    },
     viewerWrapper() {
       return this.$store.getters['currentProject/currentViewer'];
     },
@@ -171,25 +175,57 @@ export default {
   },
   methods: {
     async searchSimilarImages() {
-      console.log('invoking search');
-      const params = {
-        query: this.image.baseImage, 
-        datasets: '', // TODO: Rename to stores/storages in all affected components
-        staining: this.staining || '', // TODO: Exchange & to AND so it doesnt break HTTP and then reverse in microservice
+      if (this.isLoading) {
+        return;
+      }
+
+      const body = {
+        query: this.image.baseImage,
+        datasets: '',
+        staining: this.staining || '',
         organ: this.organ || '',
         species: this.species || '',
         diagnosis: this.diagnosis || '',
-        k: this.k + 1 || 3,
+        k: (this.k ?? 3) + 1,
       };
 
       this.isLoading = true;
       this.data = null;
 
       try {
-        const response = await Cytomine.instance.api.get('wsi-cbir/retrieval', {
-          params,
-        });
-        this.data = response.data;
+        // 1) submit job
+        const submit = await Cytomine.instance.api.post('wsi-cbir/retrieval', body);
+        const jobId = submit.data.jobId || submit.data.job_id;
+
+        // 2) poll job
+        const pollIntervalMs = 1000;
+        const timeoutMs = 10 * 60 * 1000; // 10 minutes
+        const start = Date.now();
+
+        let done = false;
+        while (!done) {
+          if (Date.now() - start > timeoutMs) {
+            throw new Error('Retrieval timed out (client-side).');
+          }
+
+          const s = await Cytomine.instance.api.get(`wsi-cbir/jobs/${jobId}`);
+          const {state, result, error} = s.data;
+
+          // optional UI updates
+          // this.loadingMessage = message;
+          // this.loadingProgress = progress;
+
+          if (state === 'DONE') {
+            this.data = result;
+            done = true;
+          } else if (state === 'FAILED') {
+            throw new Error(error || 'Job failed');
+          } else if (state === 'CANCELED') {
+            throw new Error('Job canceled');
+          } else {
+            await this.sleep(pollIntervalMs); // <-- limits to ~1 request/sec
+          }
+        }
       } catch (e) {
         console.error('Error while searching similar images:', e);
       } finally {

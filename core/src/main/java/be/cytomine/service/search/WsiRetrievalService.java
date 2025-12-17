@@ -46,7 +46,7 @@ public class WsiRetrievalService {
         return CBIR_API_BASE_PATH;
     }
 
-    public ResponseEntity<SearchResponse> retrieveSimilarImages(Long k, String query, String datasets, String staining, String organ, String species, String diagnosis) {
+    public ResponseEntity<String> retrieveSimilarImages(Long k, String query, String datasets, String staining, String organ, String species, String diagnosis) {
         String url = UriComponentsBuilder
             .fromHttpUrl(getInternalCbirURL())
             .path("/api/retrieval")
@@ -59,26 +59,11 @@ public class WsiRetrievalService {
             .queryParam("k", k)
             .toUriString();
         log.debug(url);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
-        // ResponseEntity<String> stringResponse = restTemplate.exchange(url, HttpMethod.GET, null, String.class);
-        // log.debug("Raw response body: {}", stringResponse.getBody());
-
-        ResponseEntity<SearchResponse> response = restTemplate.exchange(url, HttpMethod.GET, null, SearchResponse.class);
-        log.debug("Receiving response {}", response);
-
-        SearchResponse searchResponse = response.getBody();
-        if (searchResponse == null) {
-            log.warn("SearchResponse body is null");
-            return response;
-        }
-
-        log.debug("Query: {}, Index: {}, Storage: {}, Similarities count: {}", 
-            searchResponse.getQuery(), 
-            searchResponse.getIndex(), 
-            searchResponse.getStorage(),
-            searchResponse.getSimilarities() != null ? searchResponse.getSimilarities().size() : 0);
-
-        return ResponseEntity.ok(searchResponse);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(null, headers);
+        return restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
     }
 
     public ResponseEntity<String> indexImage(AbstractImage image) {
@@ -109,5 +94,21 @@ public class WsiRetrievalService {
         log.debug("Remove index for image {}", image.getId());
 
         return restTemplate.exchange(url, HttpMethod.POST, null, String.class);
+    }
+
+    public ResponseEntity<SearchResponse> getJob(String jobId) {
+        URI url = UriComponentsBuilder
+            .fromHttpUrl(getInternalCbirURL())
+            .path("/api/jobs/{job_id}")
+            .queryParam("job_id", jobId)
+            .build()
+            .toUri();
+
+        ResponseEntity<SearchResponse> response = restTemplate.exchange(url, HttpMethod.GET, null, SearchResponse.class);
+        log.debug("Receiving response {}", response);
+
+        SearchResponse searchResponse = response.getBody();
+        return ResponseEntity.ok(searchResponse);
+        
     }
 }
