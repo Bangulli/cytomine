@@ -12,7 +12,12 @@ pims:
 mongodb:
   storageClassName: 'local-path'
 app_engine:
-  tasks_namespace: cytomine-local-tasks
+  tasks_namespace:
 
 ingress:
   className: nginx
+
+iam:
+  lsaaiClientIdSecretName: lsaai-client-id
+  lsaaiClientSecretSecretName: lsaai-client-secret
+  lsaaiEndpoint: https://login.aai.lifescience-ri.eu/oidc/.well-known/openid-configuration

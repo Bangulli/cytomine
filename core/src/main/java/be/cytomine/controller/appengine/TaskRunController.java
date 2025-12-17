@@ -1,6 +1,7 @@
 package be.cytomine.controller.appengine;
 
 import be.cytomine.service.appengine.TaskRunService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +31,7 @@ public class TaskRunController {
         @PathVariable UUID task,
         @RequestBody JsonNode body
     ) {
-        return taskRunService.addTaskRun(project, "tasks/" + task + "/runs", body);
+        return taskRunService.addTaskRun(project, task.toString(), body);
     }
 
     @PostMapping("/project/{project}/tasks/{namespace}/{version}/runs")
@@ -40,8 +41,7 @@ public class TaskRunController {
         @PathVariable String version,
         @RequestBody JsonNode body
     ) {
-        String uri = "tasks/" + namespace + "/" + version + "/runs";
-        return taskRunService.addTaskRun(project, uri, body);
+        return taskRunService.addTaskRun(project, namespace + "/" + version, body);
     }
 
     @GetMapping("/project/{project}/task-runs/{task}")
@@ -70,7 +70,7 @@ public class TaskRunController {
         @PathVariable UUID task,
         @PathVariable("parameter_name") String parameterName,
         @RequestBody JsonNode json
-    ) {
+    ) throws JsonProcessingException {
         return taskRunService.provisionTaskRun(json, project, task, parameterName);
     }
 
