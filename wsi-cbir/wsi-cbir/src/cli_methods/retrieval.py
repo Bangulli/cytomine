@@ -57,33 +57,3 @@ def find_k_similar(index: Index, query: str | int, k: int, metadata: dict=None):
             "similarities": list(zip(best_imgs, best_sims, best_fns))
         }
         return result
-
-    # searching without image is disabled for now
-    # else:
-    #     print(f"= Received no query, will fetch only metadata based results")
-        
-    #     index = Index(embeddings).load()
-        
-    #     if args.metadata:
-    #         print(f'= Filtering subset by metadata')
-    #         subset = index.filter_metadata(args.metadata, subset if subset else None)
-    #     else: raise RuntimeError('Didnt receive metadata filter or query')
-            
-    #     result = {
-    #         "query": args.query,
-    #         "metadata-filter": args.metadata,
-    #         "target-dataset": args.datasets,
-    #         "embedding_database": args.embeddings,
-    #         "filtered": subset
-    #     }
-    #     if args.save is not None:
-    #         with open(args.save if args.save.endswith('.json') else args.save+'.json', 'w') as file:
-    #             print(f"""== Writing results to file {args.save if args.save.endswith('.json') else args.save+'.json'}""")
-    #             json.dump(result, file, indent=4)
-    #     print("--FINISHED--", json.dumps(result))
-    #     if hasattr(args, 'return_result'):
-    #         return result
-    #     else:
-    #         return 0
-    
-        

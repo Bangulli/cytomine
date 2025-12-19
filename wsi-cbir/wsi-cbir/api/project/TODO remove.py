@@ -1,0 +1,1 @@
+# remove image from project index

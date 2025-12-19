@@ -14,6 +14,9 @@ from fastapi.responses import JSONResponse
 import asyncio
 ### Internal Imports ###
 from src.cli_methods.retrieval import find_k_similar
+from src.retrieval.index import Index
+from src.config import CYTOMINE_CONFIG
+from pathlib import Path
 from api.jobs import enqueue_job
 ########################
 router = APIRouter()
@@ -27,6 +30,7 @@ async def retrieval(
     species: str = None,
     diagnosis: str = None,
     k: int = 3,
+    # TODO project: str = None, 
 ) -> JSONResponse:
     """Find k most similar embeddings for a given image or embedding from a directory
 
@@ -49,6 +53,12 @@ async def retrieval(
     #return JSONResponse(status_code=200, content=find_k_similar(request.app.state.index, query, k, meta if any(meta) else None))
 
     async def retrieve():
-        return await asyncio.to_thread(find_k_similar, request.app.state.index, query, k, meta if any(meta) else None)    
+        return await asyncio.to_thread(
+            find_k_similar,
+            request.app.state.index, #TODO if project is None else Index(Path(f'''{CYTOMINE_CONFIG['embeddings']}/{project}''')), 
+            query, 
+            k, 
+            meta if any(meta) else None
+        )    
     job_id = enqueue_job(app, kind="retrieval", coro_factory=retrieve)
     return JSONResponse(status_code=202, content={"job_id": job_id, "state": "queued"})

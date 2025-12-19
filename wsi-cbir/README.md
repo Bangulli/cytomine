@@ -7,6 +7,7 @@ The image is included as a service in the superior compose application as such:
 
 ```Dockerfile
   wsi-cbir:
+    stop_grace_period: 2m
     image: cytomine/wsi-cbir:latest
     restart: unless-stopped
     volumes:

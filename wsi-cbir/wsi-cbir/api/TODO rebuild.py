@@ -1,0 +1,1 @@
+# Rebuild index from the .pth files in case the file corrupts.
