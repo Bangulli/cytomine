@@ -1,5 +1,5 @@
 import sys
-import os
+import os, shutil
 sys.path.append(os.path.join(os.path.dirname(__file__), "."))
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import faiss
@@ -18,6 +18,7 @@ class Index:
         Args:
             path (Path): Path to the home embedding directory in which the indexer lives
             dims (int, optional): Embedding dimension size. Defaults to 768.
+            recall (int, optional): How many previous versions of the index to remember
         """
         self.path = pl.Path(path)
         self.index = faiss.IndexFlatL2(dims)
@@ -221,6 +222,11 @@ class Index:
     def save(self):
         """Saves the object to disk as an index.faiss and a mapping.json
         """
+        # move legacy save to backup folder
+        if not (self.path/'prev').exists(): os.mkdir(self.path/'prev')
+        for file in ['index.faiss', 'mapping.json', 'metadata.json', 'filenames.json']:
+            shutil.move(self.path/file, self.path/'prev'/file)
+        # save new files
         faiss.write_index(self.index, str(self.path/'index.faiss'))
         with open(self.path/'mapping.json', 'w') as file:
             file.seek(0)
@@ -232,4 +238,34 @@ class Index:
             file.seek(0)
             json.dump(self.idx2fn_mapping, file, indent=4)
         print(f"@index saved to {self.path}")
-            
+
+    @property
+    def is_healthy(self):
+        """Checks if the data in the index matches the data in the storage correctly. Global index in Cytomine only.
+        """
+        # Step 1: check if filenames in mapping match filenames in directory
+        keys = sorted(list(self.id2idx_mapping.keys()))
+        fns = sorted([f.split('_')[0] for f in os.listdir(self.path) if f.endswith('.pth')])
+        if not keys == fns: return False
+        # Step 2: check if all idx are present in the index
+        values = sorted(list(self.id2idx_mapping.values()))
+        idxs = sorted(faiss.vector_to_array(self.index.id_map).tolist())
+        if not values == idxs: return False
+        # Finally return true if all checks pass
+        return True
+    
+    def rebuild(self):
+        """Rebuild the index from scratch
+        """
+        raise NotImplementedError('For rebuild to work the individual meta needs to be accessible at all times, this is still missing')
+        # confirm necessity
+        if self.is_healthy: return
+        index = Index(self.path, self.dims)
+        ## load all data and fully rebuild index here
+        self=index
+        self.save()
+    
+    def revert(self):
+        """Load a previous state of the index.
+        """
+        ## TODO add a storage history for a certain recall window
