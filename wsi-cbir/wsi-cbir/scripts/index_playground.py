@@ -19,4 +19,9 @@ from src.retrieval.index import Index
 if __name__ == '__main__':
     os.makedirs(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings'), exist_ok=True)
     index = Index(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings'), DIMS[CYTOMINE_CONFIG['encoder']]) if not (pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings/index.faiss')).exists() else Index(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings')).load()
-    print('Index health check', index.is_healthy())
+    print('Index health check init', index.is_healthy, index.ntotal)
+    index = index.rebuild()
+    print('Index health check after rebuild', index.is_healthy, index.ntotal)
+    index.restore()
+    print('Index after restore', index.is_healthy, index.ntotal)
+    index.save()

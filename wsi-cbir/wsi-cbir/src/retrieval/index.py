@@ -21,6 +21,7 @@ class Index:
             recall (int, optional): How many previous versions of the index to remember
         """
         self.path = pl.Path(path)
+        self.dims = dims
         self.index = faiss.IndexFlatL2(dims)
         self.index = faiss.IndexIDMap2(self.index)
         self.idx2id_mapping = {}
@@ -147,11 +148,11 @@ class Index:
         self.index.add_with_ids(samples, idxs)
         for idx, id in zip(idxs, ids):
             self.idx2id_mapping[str(idx)]=id
-            self.id2idx_mapping[id]=str(idx)
+            self.id2idx_mapping[str(id)]=str(idx)
             self.idx2fn_mapping[str(idx)]=filename
             ## metadata not available in cytomine for now.
             ## metadata stored in lower for homogenety
-            self.metadata[id]=meta if type(meta)==bool else meta.lower() #get_meta_with_codes(id.split('/')[-1], meta[0][id.split('/')[-1]], meta[1])
+            self.metadata[str(id)]=meta if type(meta)==bool else meta.lower() #get_meta_with_codes(id.split('/')[-1], meta[0][id.split('/')[-1]], meta[1])
         #self.save() NOTE index is saved at the exit of the FastAPI asynccontextmanager
         return idxs[0], idxs[-1]
     
@@ -166,11 +167,11 @@ class Index:
         """
         for id in ids:
             if id in list(self.id2idx_mapping.keys()):
-                idx = self.id2idx_mapping[id]
+                idx = self.id2idx_mapping[str(id)]
                 self.index.remove_ids(np.asarray([idx]))
-                del self.metadata[id]
+                del self.metadata[str(id)]
                 del self.idx2id_mapping[str(idx)]
-                del self.id2idx_mapping[id]
+                del self.id2idx_mapping[str(id)]
                 del self.idx2fn_mapping[str(idx)]
         #self.save() NOTE index is saved at the exit of the FastAPI asynccontextmanager
         
@@ -241,7 +242,7 @@ class Index:
 
     @property
     def is_healthy(self):
-        """Checks if the data in the index matches the data in the storage correctly. Global index in Cytomine only.
+        """Checks if the data in the index matches the data in the storage correctly. 
         """
         # Step 1: check if filenames in mapping match filenames in directory
         keys = sorted(list(self.id2idx_mapping.keys()))
@@ -249,23 +250,32 @@ class Index:
         if not keys == fns: return False
         # Step 2: check if all idx are present in the index
         values = sorted(list(self.id2idx_mapping.values()))
-        idxs = sorted(faiss.vector_to_array(self.index.id_map).tolist())
+        idxs = [str(id) for id in sorted(faiss.vector_to_array(self.index.id_map).tolist())]
         if not values == idxs: return False
         # Finally return true if all checks pass
         return True
     
-    def rebuild(self):
-        """Rebuild the index from scratch
+    def rebuild(self, force=False):
+        """Rebuild the index from scratch using the embedding files in the directory. Global index in Cytomine only.
+
+        Args:
+            force (bool, optional): Force to rebuild, overrides the is_healthy safeguard. Defaults to False.
         """
-        raise NotImplementedError('For rebuild to work the individual meta needs to be accessible at all times, this is still missing')
         # confirm necessity
-        if self.is_healthy: return
+        if self.is_healthy and not force: return
         index = Index(self.path, self.dims)
         ## load all data and fully rebuild index here
-        self=index
-        self.save()
+        for emb in [f for f in os.listdir(self.path) if f.endswith('.pth')]:
+            with open(self.path/f'{emb.split('_')[0]}_meta.json') as file:
+                meta = json.load(file)
+            _, _ = index.add(torch.load(self.path/emb, weights_only=False).unsqueeze(0), [emb.split('_')[0]], meta['meta'], meta['filename'])
+        if not index.is_healthy: raise RuntimeError('Rebuilt index failed health check.')
+        return index
     
-    def revert(self):
+    def restore(self):
         """Load a previous state of the index.
         """
-        ## TODO add a storage history for a certain recall window
+        print(f"@index restoring index from backup")
+        for file in ['index.faiss', 'mapping.json', 'metadata.json', 'filenames.json']:
+            shutil.copy(self.path/'prev'/file, self.path/file)
+        self.load()

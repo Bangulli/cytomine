@@ -54,6 +54,7 @@ def calculate_embedding_for_image(index, path, filename, image_id):
         embedding, _, sGP = calculate_embedding(precision, factory, device, image_path, CYTOMINE_CONFIG['level'], int(patch_size), int(patch_size), CYTOMINE_CONFIG['remove_bg'], transforms, patch_encoder, slide_encoder)
         emb_pth = embeddings/f"{image_id}_embedding.pth"
         embedding.save_embedding(emb_pth)
+        save_meta(embeddings, image_id, image_filename, image_path, False)# TODO image_meta)
         print(f"""== Saved embedding to {emb_pth}""")
         
         if not xml_path.exists():
@@ -85,7 +86,7 @@ def calculate_embedding_for_image(index, path, filename, image_id):
         'status': 'Finished',
         'info': f"Indexing image {image_filename} took {min:.0f}min {s:.2f}s"
     }
-    print("--FINISHED--", json.dumps(result))
+    #print("--FINISHED--", json.dumps(result))
     return result
 
 def calculate_embedding(precision, factory, device, image, level, patch_size, patch_stride, remove_bg, transforms, patch_encoder, slide_encoder):
@@ -124,3 +125,14 @@ def calculate_embedding(precision, factory, device, image, level, patch_size, pa
         print(f"== Calculating embeddings took {time_elapsed:.2f} seconds, that is {sGP:.2f} s/GP")
         return query_embedding.to("cpu").squeeze(), time_elapsed, sGP
     
+def save_meta(embeddings, image_id, image_filename, image_path, image_meta):
+    ## save metadata individually
+    dt = {
+            'filename': image_filename,
+            'path': image_path,
+            'id': image_id,
+            'meta': image_meta, # TODO
+        }
+    with open(embeddings/f"{image_id}_meta.json", 'w') as file:
+        json.dump(dt, file, indent=4)
+        print('== Saved image meta')
