@@ -9,7 +9,7 @@ import asyncio
 import pathlib as pl
 from fastapi import FastAPI, Request
 
-from api import indexing, retrieval, removal, jobs
+from api import indexing, retrieval, removal, jobs, rebuild_restore
 from src.retrieval.index import Index
 from src.config import CYTOMINE_CONFIG
 from src.networks.encoder_mgmt import DIMS
@@ -117,3 +117,4 @@ app.include_router(router=indexing.router, prefix=PREFIX)
 app.include_router(router=retrieval.router, prefix=PREFIX)
 app.include_router(router=removal.router, prefix=PREFIX)
 app.include_router(router=jobs.router, prefix=PREFIX)
+app.include_router(router=rebuild_restore.router, prefix=PREFIX)
