@@ -16,6 +16,8 @@ import tiffslide
 import cv2
 ### Internal Imports ###
 from src.utils.switch_case import SwitchCase
+import logging
+log = logging.getLogger("uvicorn.error")
 ########################
 
 class Otsu:
@@ -25,7 +27,7 @@ class Otsu:
         w, h = thumbnail.size
         thumbnail = thumbnail.crop((w*0.1, h*0.1, w*0.9, h*0.9)) ## Crop edges to avoid bad thresholding
         self.gs_threshold = skimage.filters.threshold_otsu(np.array(thumbnail)) 
-        print(f"==== Otsu threshold is {self.gs_threshold}")
+        log.info(f"==== Otsu threshold is {self.gs_threshold}")
         
     def _get_thumbnail(self, size=512):
         with SwitchCase(type(self.wsi)) as switch:
@@ -57,7 +59,7 @@ class DilatedOtsu:
         w, h = thumbnail.size
         thumbnail = thumbnail.crop((w*0.1, h*0.1, w*0.9, h*0.9)) ## Crop edges to avoid bad thresholding
         self.gs_threshold = skimage.filters.threshold_otsu(np.array(thumbnail)) 
-        print(f"==== Otsu threshold is {self.gs_threshold}")
+        log.info(f"==== Otsu threshold is {self.gs_threshold}")
         self.se_rad_microns = se_rad_microns
         
         # None inits
@@ -97,7 +99,7 @@ class DilatedOtsu:
     
     def read_region(self, coords, level, patch_size): ## passed coords are w, h
         if self.seg_thmbnl is None: self.seg_thmbnl = self.get_segmented_thumbnail(level, 5000)
-        if self.multiplier is None: self.multiplier = np.array(self._get_region_to_thmbnl_converter(level)); print(f"=== Patch size scaled to {np.round(patch_size*self.multiplier).astype(int)} in thumbnail of size {self.seg_thmbnl.shape}")
+        if self.multiplier is None: self.multiplier = np.array(self._get_region_to_thmbnl_converter(level)); log.info(f"=== Patch size scaled to {np.round(patch_size*self.multiplier).astype(int)} in thumbnail of size {self.seg_thmbnl.shape}")
         coords_in_thmbnl = np.round(coords*self.multiplier).astype(int)
         patch_size_in_thmbnl = np.round(patch_size*self.multiplier).astype(int)
         patch_size_in_thmbnl = np.maximum(patch_size_in_thmbnl, [1, 1])
@@ -142,7 +144,7 @@ class CleanedOtsu:
         w, h = thumbnail.size
         thumbnail = thumbnail.crop((w*0.1, h*0.1, w*0.9, h*0.9)) ## Crop edges to avoid bad thresholding
         self.gs_threshold = skimage.filters.threshold_otsu(np.array(thumbnail)) 
-        print(f"==== Otsu threshold is {self.gs_threshold}")
+        log.info(f"==== Otsu threshold is {self.gs_threshold}")
         self.se_rad_microns = se_rad_microns
         
         # None inits
@@ -182,7 +184,7 @@ class CleanedOtsu:
     
     def read_region(self, coords, level, patch_size): ## passed coords are w, h
         if self.seg_thmbnl is None: self.seg_thmbnl = self.get_segmented_thumbnail(level, 5000)
-        if self.multiplier is None: self.multiplier = np.array(self._get_region_to_thmbnl_converter(level)); print(f"=== Patch size scaled to {np.round(patch_size*self.multiplier).astype(int)} in thumbnail of size {self.seg_thmbnl.shape}")
+        if self.multiplier is None: self.multiplier = np.array(self._get_region_to_thmbnl_converter(level)); log.info(f"=== Patch size scaled to {np.round(patch_size*self.multiplier).astype(int)} in thumbnail of size {self.seg_thmbnl.shape}")
         coords_in_thmbnl = np.round(coords*self.multiplier).astype(int)
         patch_size_in_thmbnl = np.round(patch_size*self.multiplier).astype(int)
         patch_size_in_thmbnl = np.maximum(patch_size_in_thmbnl, [1, 1])

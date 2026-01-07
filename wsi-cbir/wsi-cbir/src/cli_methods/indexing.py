@@ -20,10 +20,13 @@ from src.networks.encoder_mgmt import get_encoder, DIMS
 from src.datasets.dataset_mgmt import get_dataset_factory, determine_datareader_for_file
 from src.retrieval.index import Index
 from src.config import CYTOMINE_CONFIG
+import logging
+log = logging.getLogger("uvicorn.error")
+
 ########################
     
 #------------------------------------------------ INDEXING ENTRYPOINT ------------------------------------------------#    
-def calculate_embedding_for_image(index, path, filename, image_id):
+def calculate_embedding_for_image(index, path, filename, image_id, image_meta=False):
     ## Handle file I/O 
     image_path = pl.Path('/images')/path
     image_filename = filename
@@ -53,9 +56,17 @@ def calculate_embedding_for_image(index, path, filename, image_id):
         tc.cuda.empty_cache()
         embedding, _, sGP = calculate_embedding(precision, factory, device, image_path, CYTOMINE_CONFIG['level'], int(patch_size), int(patch_size), CYTOMINE_CONFIG['remove_bg'], transforms, patch_encoder, slide_encoder)
         emb_pth = embeddings/f"{image_id}_embedding.pth"
+        dt = {
+            'filename': str(image_filename),
+            'path': str(image_path),
+            'id': str(image_id),
+            'meta': image_meta, # TODO
+            }
+        with open(embeddings/f"{image_id}_meta.json", 'w') as file:
+            json.dump(dt, file, indent=4)
+            log.info(f"""== Saved metadata sidecar to {embeddings/f"{image_id}_meta.json"}""")
         embedding.save_embedding(emb_pth)
-        save_meta(embeddings, image_id, image_filename, image_path, False)# TODO image_meta)
-        print(f"""== Saved embedding to {emb_pth}""")
+        log.info(f"""== Saved embedding to {emb_pth}""")
         
         if not xml_path.exists():
             root = ET.Element("dataset")
@@ -76,7 +87,7 @@ def calculate_embedding_for_image(index, path, filename, image_id):
         
     ## keep in memory and only write in the end to avoid constantly parsing and rewriting the xml on disk
     min, s = divmod(time.time()-global_start, 60)
-    print(f"= Indexing image {image_filename} took {min:.0f}min {s:.2f}s; that is {sGP}s/Gigapixel")
+    log.info(f"= Indexing image {image_filename} took {min:.0f}min {s:.2f}s; that is {sGP}s/Gigapixel")
     
     ## add to index
     _, _ = index.add(embedding.unsqueeze(0), [image_id], False, image_filename)
@@ -86,7 +97,7 @@ def calculate_embedding_for_image(index, path, filename, image_id):
         'status': 'Finished',
         'info': f"Indexing image {image_filename} took {min:.0f}min {s:.2f}s"
     }
-    #print("--FINISHED--", json.dumps(result))
+    #log.info("--FINISHED--", json.dumps(result))
     return result
 
 def calculate_embedding(precision, factory, device, image, level, patch_size, patch_stride, remove_bg, transforms, patch_encoder, slide_encoder):
@@ -107,9 +118,9 @@ def calculate_embedding(precision, factory, device, image, level, patch_size, pa
                 transforms = transforms,  
                 half_precision = not precision == tc.float32
             )
-        print(f"== Calculating embeddings for {str(image)}")
+        log.info(f"== Calculating embeddings for {str(image)}")
         gigapixels = (wsi.resolution[0]*wsi.resolution[1])/1e9
-        print(f"== Handling image with Level={wsi.resolution_level}, {wsi.mpp[0]:.2f} x {wsi.mpp[1]:.2f} µm/pixel, {wsi.resolution[0]} x {wsi.resolution[1]} pixels -> {gigapixels:.2f} GP")
+        log.info(f"== Handling image with Level={wsi.resolution_level}, {wsi.mpp[0]:.2f} x {wsi.mpp[1]:.2f} µm/pixel, {wsi.resolution[0]} x {wsi.resolution[1]} pixels -> {gigapixels:.2f} GP")
                     
         query_embedding : WholeSlideEmbedding = inference.calculate_slide_level_embedding(
             wsi,
@@ -122,17 +133,5 @@ def calculate_embedding(precision, factory, device, image, level, patch_size, pa
         ).type(tc.float16)
         time_elapsed=time.time()-start
         sGP = time_elapsed/gigapixels
-        print(f"== Calculating embeddings took {time_elapsed:.2f} seconds, that is {sGP:.2f} s/GP")
+        log.info(f"== Calculating embeddings took {time_elapsed:.2f} seconds, that is {sGP:.2f} s/GP")
         return query_embedding.to("cpu").squeeze(), time_elapsed, sGP
-    
-def save_meta(embeddings, image_id, image_filename, image_path, image_meta):
-    ## save metadata individually
-    dt = {
-            'filename': image_filename,
-            'path': image_path,
-            'id': image_id,
-            'meta': image_meta, # TODO
-        }
-    with open(embeddings/f"{image_id}_meta.json", 'w') as file:
-        json.dump(dt, file, indent=4)
-        print('== Saved image meta')

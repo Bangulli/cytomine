@@ -10,6 +10,8 @@ from typing import Any
 
 ### Internal Imports ###
 from src.utils.switch_case import SwitchCase
+import logging
+log = logging.getLogger("uvicorn.error")
 ########################
 DIMS = {
     'PGP': 768,
@@ -31,7 +33,7 @@ def get_encoder(key):
             slide_encoder = provgigapath_slide.ProvGigaPath_Slide(model_checkpoint_path=slide_model_checkpoint_path).eval()
             transforms = provgigapath_patch.get_transform()
             patch_size = 518
-            print(f"@encoder-mgmt: ProvGigaPath loaded successfully.")
+            log.info(f"@encoder-mgmt: ProvGigaPath loaded successfully.")
             
         elif switch.case("CHIEF"):
             patch_model_checkpoint_path = "/model_weights/CHIEF_patch.pth"
@@ -42,7 +44,7 @@ def get_encoder(key):
             slide_encoder = chief_slide.CHIEF_Slide(model_checkpoint_path=slide_model_checkpoint_path).eval()
             transforms = chief_patch.get_transform()
             patch_size = 224
-            print(f"@encoder-mgmt: CHIEF loaded successfully.")
+            log.info(f"@encoder-mgmt: CHIEF loaded successfully.")
             
         elif switch.case("TITAN"):
             patch_model_checkpoint_path = "/model_weights/TITAN_patch.bin"
@@ -53,7 +55,7 @@ def get_encoder(key):
             slide_encoder = titan_slide.TITAN_Slide(model_checkpoint_path=slide_model_checkpoint_path).eval()
             transforms = patch_encoder.get_transforms()
             patch_size = 448
-            print(f"@encoder-mgmt: TITAN loaded successfully")
+            log.info(f"@encoder-mgmt: TITAN loaded successfully")
             
         elif switch.case("PRISM"):
             patch_model_checkpoint_path = "/model_weights/PRISM_patch.bin"
@@ -64,7 +66,7 @@ def get_encoder(key):
             slide_encoder = prism_slide.PRISM_Slide(model_checkpoint_path=slide_model_checkpoint_path).eval()
             transforms = patch_encoder.get_transforms()
             patch_size = 224
-            print(f"@encoder-mgmt: PRISM loaded successfully")
+            log.info(f"@encoder-mgmt: PRISM loaded successfully")
             
     return patch_encoder, slide_encoder, transforms, patch_size
 

@@ -20,6 +20,8 @@ from src.networks.encoder_mgmt import get_encoder, DIMS
 from src.datasets.dataset_mgmt import get_dataset_factory, determine_datareader_for_file
 from src.retrieval.index import Index
 from src.config import CYTOMINE_CONFIG
+import logging
+log = logging.getLogger("uvicorn.error")
 ########################
     
 #------------------------------------------------ INDEXING ENTRYPOINT ------------------------------------------------#    
@@ -36,6 +38,7 @@ def remove_embedding_for_image(index: Index, path, filename, image_id):
     ## remove from index
     index.rm([image_id])
     os.remove(emb_pth)
+    os.remove(embeddings/f"{image_id}_meta.json")
     
     ## remove from xml
     tree = ET.parse(xml_path)
@@ -48,7 +51,7 @@ def remove_embedding_for_image(index: Index, path, filename, image_id):
     tree.write(xml_path, encoding="utf-8", xml_declaration=True)
 
     ## send response
-    print(f"= Removed image {image_filename} from index")
+    log.info(f"= Removed image {image_filename} from index")
     result = {
         'status': 'Finished',
         'info': f"Removed image {image_filename} from index"

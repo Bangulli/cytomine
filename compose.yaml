@@ -233,6 +233,7 @@ services:
     environment:
       API_BASE_PATH: /wsi-cbir
       DATA_PATH: /data
+      PYTHONUNBUFFERED: "1"
     networks:
       host_network:
         ipv4_address: 172.16.238.16

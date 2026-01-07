@@ -11,21 +11,23 @@ from typing import Any
 ### Internal Imports ###
 from src.datasets import factories 
 from src.utils.switch_case import SwitchCase
+import logging
+log = logging.getLogger("uvicorn.error")
 ########################
 
 def get_dataset_factory(key):
     ## Load models
     with SwitchCase(key) as switch:
         if switch.case("wsidicom"): 
-            print("@dataset-mgmt: Parsing input as containing dicom directories with wsidicom")
+            log.info("@dataset-mgmt: Parsing input as containing dicom directories with wsidicom")
             factory = factories.make_wsidicom_dataset
             
         elif switch.case("openslide"): 
-            print("@dataset-mgmt: Parsing input with openslide")
+            log.info("@dataset-mgmt: Parsing input with openslide")
             factory = factories.make_openslide_dataset
             
         elif switch.case("tiffslide"): 
-            print("@dataset-mgmt: Parsing input with tiffslide")
+            log.info("@dataset-mgmt: Parsing input with tiffslide")
             factory = factories.make_tiffslide_dataset
             
     return factory
@@ -47,7 +49,7 @@ def determine_datareader_for_file(path):
     else: raise RuntimeError(f"Could not determine datareader as the contents of {str(path)} is not homogeneous")
     
 # def get_dataset_factory(key):
-#     # this could literally just be opt[key] lol but then the connection with the indexing -h option printout would break
+#     # this could literally just be opt[key] lol but then the connection with the indexing -h option log.infoout would break
 #     return SwitchCase.switch_case_function(
 #         key=key,
 #         options= {

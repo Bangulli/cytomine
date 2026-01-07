@@ -15,7 +15,8 @@ import skimage
 ### Internal Imports ###
 from src.datasets.bg_removal import get_bg_rm_tool
 import wsi
-
+import logging
+log = logging.getLogger("uvicorn.error")
 ########################
 
 
@@ -103,7 +104,7 @@ class OpenSlideDataset(wsi.WholeSlide):
                     
         corners = np.array(corners)
         coordinates = np.array(coordinates)
-        print(f"=== Obtained {corners.shape[0]} patches for image")
+        log.info(f"=== Obtained {corners.shape[0]} patches for image")
         return corners, coordinates
 
     def _ensure_image_is_open(self):

@@ -18,6 +18,8 @@ from src.utils.hardware_mgmt import get_least_used_gpu
 from src.networks.encoder_mgmt import get_encoder, DIMS
 from src.datasets.dataset_mgmt import get_dataset_factory, determine_datareader_for_file
 from src.config import CYTOMINE_CONFIG
+import logging
+log = logging.getLogger("uvicorn.error")
 ########################
         
 #------------------------------------------------ RETRIEVAL ENTRYPOINT ------------------------------------------------#        
@@ -30,16 +32,16 @@ def find_k_similar(index: Index, query: str | int, k: int, metadata: dict=None):
     ## Handle query file type
     query_path = embeddings/f'{query}_embedding.pth'
     if query_path.is_file(): # skip encoding step
-        print("= Treating query file as pre-encoded embedding")
+        log.info("= Treating query file as pre-encoded embedding")
         query_embedding  = WholeSlideEmbedding().load_embedding(path=query_path).squeeze().numpy()
-        print("= Embedding loaded successfully!")
+        log.info("= Embedding loaded successfully!")
     else: raise RuntimeError(f'No embedding known for query image {query}')
     
     ## Handle subset selection by dataset selection and metadata filtration
     if query:      
         # Perform search        
         if metadata:
-            print(f'= Filtering subset by metadata')
+            log.info(f'= Filtering subset by metadata')
             if type(metadata) is dict:
                 subset = index.filter_metadata(metadata, None)
                 best_imgs, best_sims, best_fns = index.search_subset(np.expand_dims(query_embedding, 0), int(k), subset)
@@ -47,7 +49,7 @@ def find_k_similar(index: Index, query: str | int, k: int, metadata: dict=None):
                 raise RuntimeError('Metadata filter must be either dict or path to json file')
 
         else:
-            print(f"= Searching entire database of size {index.ntotal}")
+            log.info(f"= Searching entire database of size {index.ntotal}")
             best_imgs, best_sims, best_fns = index.search(np.expand_dims(query_embedding, 0), int(k))
 
         result = {

@@ -16,6 +16,8 @@ import skimage
 ### Internal Imports ###
 import wsi
 from src.datasets.bg_removal import get_bg_rm_tool
+import logging
+log = logging.getLogger("uvicorn.error")
 ########################
 
 class WsiDicomDataset(wsi.WholeSlide):
@@ -103,7 +105,7 @@ class WsiDicomDataset(wsi.WholeSlide):
                     corners.append(coordinate)
                     coordinates.append(coordinate_given_level)
         corners = np.array(corners)
-        print(f"=== Obtained {corners.shape[0]} patches for image")
+        log.info(f"=== Obtained {corners.shape[0]} patches for image")
         coordinates = np.array(coordinates)
         return corners, coordinates
     
