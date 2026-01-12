@@ -226,7 +226,7 @@ class Index:
         # move legacy save to backup folder
         if not (self.path/'prev').exists(): os.mkdir(self.path/'prev')
         for file in ['index.faiss', 'mapping.json', 'metadata.json', 'filenames.json']:
-            shutil.move(self.path/file, self.path/'prev'/file)
+            if (self.path/file).exists(): shutil.move(self.path/file, self.path/'prev'/file)
         # save new files
         faiss.write_index(self.index, str(self.path/'index.faiss'))
         with open(self.path/'mapping.json', 'w') as file:
@@ -250,7 +250,7 @@ class Index:
         if not keys == fns: return False
         # Step 2: check if all idx are present in the index
         values = sorted(list(self.id2idx_mapping.values()))
-        idxs = [str(id) for id in sorted(faiss.vector_to_array(self.index.id_map).tolist())]
+        idxs = sorted([str(id) for id in faiss.vector_to_array(self.index.id_map).tolist()])
         if not values == idxs: return False
         # Finally return true if all checks pass
         return True
@@ -263,14 +263,15 @@ class Index:
         """
         # confirm necessity
         if self.is_healthy and not force: return
-        index = Index(self.path, self.dims)
+        new_index = Index(self.path, self.dims)
         ## load all data and fully rebuild index here
         for emb in [f for f in os.listdir(self.path) if f.endswith('.pth')]:
             with open(self.path/f'{emb.split('_')[0]}_meta.json') as file:
                 meta = json.load(file)
-            _, _ = index.add(torch.load(self.path/emb, weights_only=False).unsqueeze(0), [emb.split('_')[0]], meta['meta'], meta['filename'])
-        if not index.is_healthy: raise RuntimeError('Rebuilt index failed health check.')
-        return index
+            print('adding', emb)
+            _, _ = new_index.add(torch.load(self.path/emb, weights_only=False).unsqueeze(0), [emb.split('_')[0]], meta['meta'], meta['filename'])
+        if not new_index.is_healthy: raise RuntimeError(f'Rebuilt index failed health check. {self.path} {os.listdir(self.path)}')
+        return new_index
     
     def restore(self):
         """Load a previous state of the index.

@@ -19,3 +19,6 @@ build/
 # Cytomine data
 cache/
 data/
+
+# env
+.venv/
