@@ -10,6 +10,7 @@ import pathlib as pl
 from fastapi import FastAPI, Request
 
 from api import indexing, retrieval, removal, jobs, rebuild_restore
+from api.project import create, delete, add, remove as rm
 from src.retrieval.index import Index
 from src.config import CYTOMINE_CONFIG
 from src.networks.encoder_mgmt import DIMS
@@ -113,8 +114,14 @@ app = FastAPI(
     },
 
 )
+
+## add endpoints
 app.include_router(router=indexing.router, prefix=PREFIX)
 app.include_router(router=retrieval.router, prefix=PREFIX)
 app.include_router(router=removal.router, prefix=PREFIX)
 app.include_router(router=jobs.router, prefix=PREFIX)
 app.include_router(router=rebuild_restore.router, prefix=PREFIX)
+app.include_router(router=create.router, prefix=PREFIX)
+app.include_router(router=delete.router, prefix=PREFIX)
+app.include_router(router=add.router, prefix=PREFIX)
+app.include_router(router=rm.router, prefix=PREFIX)

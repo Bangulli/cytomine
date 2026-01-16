@@ -42,6 +42,7 @@ import be.cytomine.service.meta.PropertyService;
 import be.cytomine.service.ontology.*;
 import be.cytomine.service.search.ImageSearchExtension;
 import be.cytomine.service.security.SecurityACLService;
+import be.cytomine.service.search.WsiRetrievalService;
 import be.cytomine.utils.*;
 import be.cytomine.utils.filters.SQLSearchParameter;
 import be.cytomine.utils.filters.SearchOperation;
@@ -151,6 +152,9 @@ public class ImageInstanceService extends ModelService {
 
     @Autowired
     MongoClient mongoClient;
+
+    @Autowired
+    private WsiRetrievalService wsiRetrievalService;
 
     @Value("${spring.data.mongodb.database}")
     private String mongoDatabaseName;
@@ -815,6 +819,7 @@ public class ImageInstanceService extends ModelService {
             p.setDomain(domain);
             propertyService.add(p.toJsonObject());
         }
+        wsiRetrievalService.addImageToProjectIndex(((ImageInstance) domain).getProject().getId().toString(), ai.getId().toString());
 
     }
 
@@ -896,11 +901,13 @@ public class ImageInstanceService extends ModelService {
         } else {
             throw new ServerException("Cannot acquire lock for project " + project.getId() + " , tryLock return false");
         }
+        
     }
 
     @Override
     public void deleteDependencies(CytomineDomain domain, Transaction transaction, Task task) {
         ImageInstance imageInstance = (ImageInstance)domain;
+        wsiRetrievalService.rmImageFromProjectIndex(imageInstance.getProject().getId().toString(), ((ImageInstance) domain).getBaseImage().getId().toString());
         deleteDependentReviewedAnnotation(imageInstance, transaction, task);
         deleteDependentUserAnnotation(imageInstance, transaction, task);
         deleteDependentAnnotationAction(imageInstance, transaction, task);

@@ -18,6 +18,7 @@ package be.cytomine.service.project;
 
 import be.cytomine.domain.CytomineDomain;
 import be.cytomine.domain.command.*;
+import be.cytomine.domain.image.AbstractImage;
 import be.cytomine.domain.image.ImageInstance;
 import be.cytomine.domain.ontology.AnnotationTerm;
 import be.cytomine.domain.ontology.Ontology;
@@ -56,6 +57,8 @@ import be.cytomine.utils.*;
 import be.cytomine.utils.filters.SQLSearchParameter;
 import be.cytomine.utils.filters.SearchParameterEntry;
 import be.cytomine.utils.filters.SearchParameterProcessed;
+import be.cytomine.service.search.WsiRetrievalService;
+
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Accumulators;
@@ -68,6 +71,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.DateUtils;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -90,6 +94,9 @@ import static org.springframework.security.acls.domain.BasePermission.*;
 @Service
 @Transactional
 public class ProjectService extends ModelService {
+
+    @Autowired
+    private WsiRetrievalService wsiRetrievalService;
 
     private final CommandHistoryRepository commandHistoryRepository;
 
@@ -614,6 +621,7 @@ public class ProjectService extends ModelService {
         }
 
         retrievalService.createStorage(project.getId().toString());
+        wsiRetrievalService.createProjectIndex(project.getId().toString());
 
         return commandResponse;
     }
@@ -867,6 +875,7 @@ public class ProjectService extends ModelService {
         redoStackItemRepository.deleteAllByCommand_Project(project);
         commandRepository.deleteAllByProject(project);
         retrievalService.deleteStorage(project.getId().toString());
+        wsiRetrievalService.deleteProjectIndex(project.getId().toString());
     }
 
     public List<Object> getStringParamsI18n(CytomineDomain domain) {

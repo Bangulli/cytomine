@@ -37,10 +37,11 @@ public class WsiRetrievalController {
         String organ = (String) body.get("organ");
         String species = (String) body.get("species");
         String diagnosis = (String) body.get("diagnosis");
+        String project_id = (String) body.get("projectId");
     
         log.debug("Retrieve similar images for query image");
 
-        return retrievalService.retrieveSimilarImages(k, query, datasets, staining, organ, species, diagnosis);
+        return retrievalService.retrieveSimilarImages(k, query, datasets, staining, organ, species, diagnosis, project_id);
     }
 
     @GetMapping("/wsi-cbir/jobs/{jobId}")

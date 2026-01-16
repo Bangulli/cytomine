@@ -46,7 +46,7 @@ public class WsiRetrievalService {
         return CBIR_API_BASE_PATH;
     }
 
-    public ResponseEntity<String> retrieveSimilarImages(Long k, Long query, String datasets, String staining, String organ, String species, String diagnosis) {
+    public ResponseEntity<String> retrieveSimilarImages(Long k, Long query, String datasets, String staining, String organ, String species, String diagnosis, String project_id) {
         String url = UriComponentsBuilder
             .fromHttpUrl(getInternalCbirURL())
             .path("/api/retrieval")
@@ -56,6 +56,7 @@ public class WsiRetrievalService {
             .queryParam("organ", organ)
             .queryParam("species", species)
             .queryParam("diagnosis", diagnosis)
+            .queryParam("project_id", project_id)
             .queryParam("k", k)
             .toUriString();
         log.debug(url);
@@ -133,5 +134,55 @@ public class WsiRetrievalService {
         log.debug("Receiving response {}", response);
 
         return response;
+    }
+
+    public void createProjectIndex(String projectId){
+        URI url = UriComponentsBuilder
+            .fromHttpUrl(getInternalCbirURL())
+            .path("/api/project/create")
+            .queryParam("project_id", projectId)
+            .build()
+            .toUri();
+
+        log.debug("Create index for project {}", projectId);
+        restTemplate.exchange(url, HttpMethod.POST, null, String.class);
+    }
+
+    public void deleteProjectIndex(String projectId){
+        URI url = UriComponentsBuilder
+            .fromHttpUrl(getInternalCbirURL())
+            .path("/api/project/delete")
+            .queryParam("project_id", projectId)
+            .build()
+            .toUri();
+
+        log.debug("Delete index for project {}", projectId);
+        restTemplate.exchange(url, HttpMethod.POST, null, String.class);
+    }
+
+    public void addImageToProjectIndex(String projectId, String imageId){
+        URI url = UriComponentsBuilder
+            .fromHttpUrl(getInternalCbirURL())
+            .path("/api/project/add")
+            .queryParam("project_id", projectId)
+            .queryParam("image_id", imageId)
+            .build()
+            .toUri();
+
+        log.debug("Add image {} to index for project {}", imageId, projectId);
+        restTemplate.exchange(url, HttpMethod.POST, null, String.class);
+    }
+
+    public void rmImageFromProjectIndex(String projectId, String imageId){
+        URI url = UriComponentsBuilder
+            .fromHttpUrl(getInternalCbirURL())
+            .path("/api/project/rm")
+            .queryParam("project_id", projectId)
+            .queryParam("image_id", imageId)
+            .build()
+            .toUri();
+
+        log.debug("Remove image {} from index for project {}", imageId, projectId);
+        restTemplate.exchange(url, HttpMethod.POST, null, String.class);
     }
 }

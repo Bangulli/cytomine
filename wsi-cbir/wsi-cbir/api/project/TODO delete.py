@@ -1,1 +1,0 @@
-# delete project index

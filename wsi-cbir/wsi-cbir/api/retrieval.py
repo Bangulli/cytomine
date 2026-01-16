@@ -18,6 +18,7 @@ from src.retrieval.index import Index
 from src.config import CYTOMINE_CONFIG
 from pathlib import Path
 from api.jobs import enqueue_job
+from src.cli_methods.project import load
 ########################
 router = APIRouter()
 
@@ -29,6 +30,7 @@ async def retrieval(
     organ: str = None,
     species: str = None,
     diagnosis: str = None,
+    project_id: str=None,
     k: int = 3,
     # TODO project: str = None, 
 ) -> JSONResponse:
@@ -55,7 +57,7 @@ async def retrieval(
     async def retrieve():
         return await asyncio.to_thread(
             find_k_similar,
-            request.app.state.index, #TODO if project is None else Index(Path(f'''{CYTOMINE_CONFIG['embeddings']}/{project}''')), 
+            request.app.state.index if project_id is None else load(project_id), 
             query, 
             k, 
             meta if any(meta) else None

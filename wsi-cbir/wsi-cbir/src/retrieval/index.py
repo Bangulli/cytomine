@@ -157,7 +157,7 @@ class Index:
         print(f'== {len(subset)} samples fulfill the filter conditions {conditions}')
         return subset
         
-    def add(self, samples, ids, meta, filename): # samples are the embeddings arrays, ids are the corresponding image paths
+    def add(self, samples, ids, meta=None, filename=None): # samples are the embeddings arrays, ids are the corresponding image paths
         """Add embedding data into the index
 
         Args:
@@ -175,7 +175,7 @@ class Index:
             self.idx2fn_mapping[str(idx)]=filename
             ## metadata not available in cytomine for now.
             ## metadata stored in lower for homogenety
-            self.metadata[str(id)]=meta
+            self.metadata[str(id)] = meta if type(meta) != dict else {k:v.lower() for k,v in meta.items()}
         #self.save() NOTE index is saved at the exit of the FastAPI asynccontextmanager
         return idxs[0], idxs[-1]
     

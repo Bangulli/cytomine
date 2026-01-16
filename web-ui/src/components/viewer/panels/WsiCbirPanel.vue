@@ -72,6 +72,13 @@
         <b-input type="number" v-model.number="k"></b-input>
       </b-field>
 
+      <!-- local search -->
+      <b-field label="Search in-project only">
+        <b-checkbox v-model="localSearch">
+          Search in project
+        </b-checkbox>
+      </b-field>
+
       <button
         class="button is-small is-fullwidth"
         @click="searchSimilarImages"
@@ -139,6 +146,7 @@ export default {
       organ: '',
       species: '',
       diagnosis: '',
+      localSearch: true,
       k: 3,
     };
   },
@@ -186,6 +194,7 @@ export default {
         organ: this.organ || '',
         species: this.species || '',
         diagnosis: this.diagnosis || '',
+        projectId: this.localSearch ? this.project.id.toString() : '',
         k: (this.k ?? 3) + 1,
       };
 
