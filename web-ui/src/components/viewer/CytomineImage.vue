@@ -166,7 +166,7 @@
             <a @click="togglePanel('content-based-image-retrieval')" :class="{active: activePanel === 'content-based-image-retrieval'}">
               <i class="fas fa-images"></i>
             </a>
-            <wsi-cbir-panel class="panel-options" v-show="activePanel === 'content-based-image-retrieval'" :index="index" />
+            <wsi-cbir-panel class="panel-cbir" v-show="activePanel === 'content-based-image-retrieval'" :index="index" />
           </li>
         </template>
       </ul>
@@ -987,6 +987,49 @@ $colorOpenedPanelLink: #6c95c8;
   background: $backgroundPanel;
   padding: 0.75em;
   border-radius: 5px 0 0 5px;
+}
+
+/* ----- STYLE FORE WSI-CBIR PANEL ----- */
+
+.panel-cbir {
+  position: absolute;
+  right: $widthPanelBar;
+
+  /* Grow “both directions”: center on the icon */
+  top: 50%;
+  transform: translateY(-35%);
+
+  /* Size */
+  width: 24em;
+  min-height: 10em;
+
+  /* Viewport limit: once it hits this, stop growing and scroll */
+  max-height: calc(100vh - 1rem);   /* 1rem margin top + bottom */
+  overflow: auto;
+
+  /* Make the max-height include padding/border */
+  box-sizing: border-box;
+
+  /* Optional nice-to-haves */
+  overscroll-behavior: contain;
+
+  /* Visuals */
+  background: $backgroundPanel;
+  padding: 0.75em;
+  border-radius: 5px 0 0 5px;
+  z-index: 200;
+}
+
+/* Optional: if CBIR has internal headings/tables like your others */
+.panel-cbir h1 {
+  font-size: 1.1rem;
+  padding-top: 0.3rem !important;
+  padding-bottom: 1rem !important;
+}
+
+.panel-cbir table {
+  background: none;
+  width: 100%;
 }
 
 /* ----- CUSTOM STYLE FOR OL CONTROLS ----- */

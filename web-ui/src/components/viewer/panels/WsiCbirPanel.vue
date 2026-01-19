@@ -8,7 +8,7 @@
     <div>
       <h5>{{ $t('Search Parameters') }}</h5>
 
-      <!-- <b-field>
+      <b-field>
         <template #label>
           Staining (optional)
           <b-tooltip multilined label="Staining metadata filtration. Takes the codes or string values of stainings from SNOMED as input. You can combine multiple commands by AND gates with + or OR gates with |. A value can be excluded by adding a ! in front of the parameter. Example for returning only H&E or Hematoxylin & Antibody stained images: 36879007 AND 12710003 OR 12710003 AND Antibody">
@@ -19,10 +19,11 @@
         <b-input
           v-model="staining"
           placeholder="Staining (coming soon)"
+          disabled
         />
-      </b-field> -->
+      </b-field>
 
-      <!--<b-field>
+      <b-field>
         <template #label>
           Organ (optional)
           <b-tooltip label="This feature is planned but not yet available.">
@@ -65,7 +66,7 @@
           placeholder="Diagnosis (coming soon)"
           disabled
         />
-      </b-field> -->
+      </b-field> 
 
       <!-- k -->
       <b-field label="k (number of results)">
@@ -73,9 +74,9 @@
       </b-field>
 
       <!-- local search -->
-      <b-field label="Search in-project only">
+      <b-field>
         <b-checkbox v-model="localSearch">
-          Search in project
+          Search in this project only
         </b-checkbox>
       </b-field>
 
