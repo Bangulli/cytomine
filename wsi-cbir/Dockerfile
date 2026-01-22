@@ -5,6 +5,9 @@
 ########################
 FROM nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04 AS build
 
+ARG ENCODER=default
+ENV ENCODER=${ENCODER}
+
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
       python3.12 python3.12-venv python3.12-dev \
@@ -17,9 +20,20 @@ RUN python -m pip install --upgrade pip wheel setuptools
 
 WORKDIR /app
 COPY wsi-cbir/src/ /app/src/
-COPY requirements_chief.txt /app/requirements_chief.txt
-RUN python -m pip install -r /app/requirements_chief.txt \
- && python -m pip install fastapi uvicorn[standard] \
+COPY deps/ /app/deps/
+
+## Dynamically install the correct dependencies for the selected model
+RUN set -eu; \
+  case "$ENCODER" in \
+    CHIEF)    python -m pip install -r deps/requirements_CHIEF.txt ;; \
+    TITAN)    python -m pip install -r deps/requirements_TITAN.txt ;; \
+    PRISM)    python -m pip install -r deps/requirements_PRISM.txt ;; \
+    GIGAPATH) python -m pip install -r deps/requirements_GIGAPATH.txt && python -m pip install flash-attn==2.8.0.post2 --no-build-isolation && python -m pip install wsidicom ;; \
+    *) echo "Unknown ENCODER='$ENCODER'"; exit 1 ;; \
+  esac
+
+
+RUN python -m pip install fastapi uvicorn[standard] \
  && rm -rf /root/.cache/pip
 
 ########################
@@ -43,6 +57,8 @@ WORKDIR /app
 COPY wsi-cbir/src/ /app/src/
 COPY wsi-cbir/api/ /app/api/
 COPY wsi-cbir/app.py /app/app.py
+
+## Bake the CHIEF weights into the model
 COPY data/model_weights/CHIEF_patch.pth /model_weights/
 COPY data/model_weights/CHIEF_slide.pth /model_weights/
 

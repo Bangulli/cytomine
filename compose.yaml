@@ -230,10 +230,14 @@ services:
       - ${DATA_PATH:-./data}/wsi-cbir/embeddings:/embeddings
       - ${DATA_PATH:-./data}/images/:/images
       - ${DATA_PATH:-./data}/dataset/:/dataset
+    build:
+      args:
+        ENCODER: "CHIEF" # has to match environment.ENCODER ## OPTIONS: "CHIEF", "PGP", "TITAN", "PRISM"
     environment:
       API_BASE_PATH: /wsi-cbir
       DATA_PATH: /data
       PYTHONUNBUFFERED: "1"
+      ENCODER: "CHIEF" # has to match build.args.ENCODER ## OPTIONS: "CHIEF", "PGP", "TITAN", "PRISM"
     networks:
       host_network:
         ipv4_address: 172.16.238.16

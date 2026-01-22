@@ -1,0 +1,17 @@
+transformers==4.42.4
+torch>=2.3,<2.8
+einops==0.8.0
+environs==11.0.0
+timm
+sacremoses==0.1.1
+openslide-python
+openslide-bin
+tiffslide
+wsidicom
+scikit-image
+torchvision
+opencv-python
+faiss-cpu
+# # install xformers to use memory-efficient attention
+# # set env `PERCEIVER_MEM_EFF_ATTN=true` to enable
+# xformers==0.0.31
