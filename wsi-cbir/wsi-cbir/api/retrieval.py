@@ -57,7 +57,7 @@ async def retrieval(
     async def retrieve():
         return await asyncio.to_thread(
             find_k_similar,
-            request.app.state.index if project_id is None else load(project_id), 
+            request.app.state.index if project_id == None or project_id == '' else load(project_id), 
             query, 
             k, 
             meta if any(meta) else None

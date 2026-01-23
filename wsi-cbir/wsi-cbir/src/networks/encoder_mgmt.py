@@ -16,7 +16,6 @@ log = logging.getLogger("uvicorn.error")
 DIMS = {
     'PGP': 768,
     'ProvGigaPath': 768,
-    'GIGAPATH': 768,
     'CHIEF': 768,
     'TITAN': 768,
     'PRISM': 1280,
@@ -25,7 +24,7 @@ DIMS = {
 def get_encoder(key):
     ## Load models
     with SwitchCase(key) as switch:
-        if switch.case(["ProvGigaPath", "PGP", "GIGAPATH"]):
+        if switch.case(["ProvGigaPath", "PGP"]):
             patch_model_checkpoint_path = "/model_weights/provgigapath_patch_raw.pth"
             slide_model_checkpoint_path = "/model_weights/provgigapath_slide.pth"
             from src.networks.patch_encoders import provgigapath as provgigapath_patch
