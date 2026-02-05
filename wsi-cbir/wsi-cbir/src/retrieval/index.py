@@ -10,7 +10,8 @@ import json
 import pathlib as pl
 import torch
 import tempfile
-
+import logging
+log = logging.getLogger("uvicorn.error")
 class Index:
     def __init__(self, path, dims=768):
         """Constructor
@@ -110,7 +111,7 @@ class Index:
         Returns:
             list: The filtered ids
         """
-        print(f"Building subset according to {conditions}")
+        log.info(f"Building subset according to {conditions}")
         subset = []
         if ids is None: ids=list(self.metadata.keys())
         for id in ids:
@@ -154,7 +155,7 @@ class Index:
                 else: is_include.append(False)
                 ### check ors     
             if all(is_include): subset.append(id)
-        print(f'== {len(subset)} samples fulfill the filter conditions {conditions}')
+        log.info(f'== {len(subset)} samples fulfill the filter conditions {conditions}')
         return subset
         
     def add(self, samples, ids, meta=None, filename=None): # samples are the embeddings arrays, ids are the corresponding image paths
@@ -232,7 +233,7 @@ class Index:
         Returns:
             Index: the loaded instance of the object
         """
-        print(f"@index loading from {self.path}")
+        log.info(f"@index loading from {self.path}")
         self.index=faiss.read_index(str(self.path/'index.faiss'))
         with open(self.path/'mapping.json', 'r') as file:
             self.idx2id_mapping=json.load(file)
@@ -261,7 +262,7 @@ class Index:
         with open(self.path/'filenames.json', 'w') as file:
             file.seek(0)
             json.dump(self.idx2fn_mapping, file, indent=4)
-        print(f"@index saved to {self.path}")
+        log.info(f"@index saved to {self.path}")
 
     @property
     def is_healthy(self):
@@ -291,7 +292,7 @@ class Index:
         for emb in [f for f in os.listdir(self.path) if f.endswith('.pth')]:
             with open(self.path/f'{emb.split('_')[0]}_meta.json') as file:
                 meta = json.load(file)
-            #print('adding', emb)
+            #log.info('adding', emb)
             _, _ = new_index.add(torch.load(self.path/emb, weights_only=False).unsqueeze(0), [emb.split('_')[0]], meta['meta'], meta['filename'])
         if not new_index.is_healthy: raise RuntimeError(f'Rebuilt index failed health check. {self.path} {os.listdir(self.path)}')
         return new_index
@@ -299,7 +300,7 @@ class Index:
     def restore(self):
         """Load a previous state of the index.
         """
-        print(f"@index restoring index from backup")
+        log.info(f"@index restoring index from backup")
         for file in ['index.faiss', 'mapping.json', 'metadata.json', 'filenames.json']:
             shutil.copy(self.path/'prev'/file, self.path/file)
         self.load()
