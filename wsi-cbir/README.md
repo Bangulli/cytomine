@@ -41,4 +41,4 @@ The container is available on 0.0.0.0 port 6001
 The configuration can be adjusted in the [config file](./wsi-cbir/src/config.py)
 
 ## Registry
-The image is available from docker hub: lokuhn/wsi-cbir:latest
+The image is available from docker hub: lokuhn/wsi-cbir:1.0.0

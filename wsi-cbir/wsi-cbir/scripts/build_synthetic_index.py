@@ -15,6 +15,7 @@ import json
 import pathlib as pl
 import random
 import time
+import torch
 from src.config import CYTOMINE_CONFIG
 from src.networks.encoder_mgmt import DIMS
 def make_name_from_list(lst):
@@ -185,6 +186,13 @@ class Index:
                                'diagnosis':random.choice(['normal', 'cancer', 'hypotrophy']),
                 }
             self.idx2fn_mapping[str(idx)]=get_name(self.metadata[id]['staining'])
+            with open(f"data/wsi-cbir/embeddings/{id}_meta.json", "w") as f:
+                dt = {
+                    "id": str(idx),
+                    "filename": id,
+                    "meta": self.metadata[id]
+                }
+                json.dump(dt, f, indent=4)
         self.save()
         return idxs[0], idxs[-1]
         
@@ -247,7 +255,7 @@ class Index:
             
 if __name__ == '__main__':    
     d = 768                           # dimension
-    nb = 1000000                      # database size
+    nb = 3000000                      # database size
     iters = 20                        # set to 20 because subset search is very slow
     os.makedirs(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings'), exist_ok=True)
     index = Index(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings'), DIMS[CYTOMINE_CONFIG['encoder']]) if not (pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings/index.faiss')).exists() else Index(pl.Path('/home/lorenz/Repositories/cytomine/data/wsi-cbir/embeddings')).load()
@@ -256,5 +264,8 @@ if __name__ == '__main__':
     xb[:, 0] += np.arange(nb) / 1000.
     ids = []
     for i in range(nb): ## random dataset ids
-        ids.append(f'{random.choice(['A', 'B', 'C', 'D', 'E', 'F', 'G'])}/IMAGE_{i}')
+        ids.append(f'IMAGE_{i}')
+    for i, id in enumerate(ids):
+        tensor = torch.from_numpy(xb[i,:])
+        torch.save(tensor, f"data/wsi-cbir/embeddings/{id}_embedding.pth")
     index.add(xb, ids) ## metadata is randomly generated within

@@ -9,7 +9,7 @@ import numpy as np
 import json
 import pathlib as pl
 import torch
-
+import tempfile
 
 class Index:
     def __init__(self, path, dims=768):
@@ -57,15 +57,37 @@ class Index:
             tuple: lists of best match distances and id strings
         """
         params = faiss.SearchParametersIVF()
-        ids_to_search = self._get_ids_to_search(ids)
-        params.sel = faiss.IDSelectorArray(ids_to_search.size, faiss.swig_ptr(ids_to_search))
+        idxs_to_search = self._get_idxs_to_search(ids)
+        params.sel = faiss.IDSelectorArray(idxs_to_search.size, faiss.swig_ptr(idxs_to_search))
         dists, idxs = self.index.search(query, k, params=params)
         dists, idxs = dists.squeeze().tolist(), idxs.squeeze().tolist()
         ids = map(self.idx2id_mapping.__getitem__, [str(i) for i in idxs])
-        fns = map(self.idx2fn_mapping.__getitem__, [str(i) for i in idxs])
+        fns = map(self.idx2fn_mapping.__getitem__, [str(i) for i in idxs]) 
         return ids, dists, fns
-        
-    def _get_ids_to_search(self, ids):
+    
+    def search_subindex(self, query, k, ids):
+        """Builds a subindex from files on disk to use optimized search loop for subset search
+
+        Args:
+            query (np.array): The numpy array containing the query embedding
+            k (int): The amount of best matches to find
+            ids (list): list of ID strings to search
+
+        Returns:
+            tuple: lists of best match distances and id strings
+        """
+        idxs = self._get_idxs_to_search(ids)
+        with tempfile.TemporaryDirectory() as tmp:
+            subindex = Index(tmp, self.dims)
+            for idx, id in zip(idxs, ids):
+                emb = f"{id}_embedding.pth"
+                with open(self.path/f'{id}_meta.json') as file:
+                    meta = json.load(file)
+                _, _ = subindex.add(torch.load(self.path/emb, weights_only=False).unsqueeze(0), [emb.split('_')[0]], meta['meta'], meta['filename'])
+            result = subindex.search(query, k)
+        return result
+    
+    def _get_idxs_to_search(self, ids):
         """Get a list of indexes for the list of ID strings
 
         Args:
@@ -76,6 +98,7 @@ class Index:
         """
         ids_to_search = list(map(self.id2idx_mapping.__getitem__, [id.split('.')[0] for id in ids]))
         return np.asarray(ids_to_search, dtype='int64')
+    
     
     def filter_metadata(self, conditions, ids=None):
         """A bad implementation of a metadata filter that supports some and/or logic to customize queries
@@ -152,7 +175,7 @@ class Index:
             self.idx2fn_mapping[str(idx)]=filename
             ## metadata not available in cytomine for now.
             ## metadata stored in lower for homogenety
-            self.metadata[str(id)]=meta if type(meta)==bool else meta.lower() #get_meta_with_codes(id.split('/')[-1], meta[0][id.split('/')[-1]], meta[1])
+            self.metadata[str(id)]=meta
         #self.save() NOTE index is saved at the exit of the FastAPI asynccontextmanager
         return idxs[0], idxs[-1]
     
@@ -268,7 +291,7 @@ class Index:
         for emb in [f for f in os.listdir(self.path) if f.endswith('.pth')]:
             with open(self.path/f'{emb.split('_')[0]}_meta.json') as file:
                 meta = json.load(file)
-            print('adding', emb)
+            #print('adding', emb)
             _, _ = new_index.add(torch.load(self.path/emb, weights_only=False).unsqueeze(0), [emb.split('_')[0]], meta['meta'], meta['filename'])
         if not new_index.is_healthy: raise RuntimeError(f'Rebuilt index failed health check. {self.path} {os.listdir(self.path)}')
         return new_index
