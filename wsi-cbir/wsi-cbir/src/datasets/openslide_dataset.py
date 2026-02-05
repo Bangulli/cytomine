@@ -28,7 +28,7 @@ class OpenSlideDataset(wsi.WholeSlide):
         wsi_path : Union[str, Path],
         mask_path : Union[str, Path, None],
         metadata_path : Union[str, Path, None],
-        resolution_level : int,
+        magnification : Union[str, float, int],
         patch_size : tuple,
         patch_stride: tuple,
         return_patch_metadata : bool = False,
@@ -43,7 +43,6 @@ class OpenSlideDataset(wsi.WholeSlide):
         self.wsi_path = wsi_path
         self.mask_path = mask_path
         self.metadata_path = metadata_path
-        self.resolution_level = resolution_level
         self.patch_size = patch_size
         self.patch_stride = patch_stride
         self.return_patch_metadata = return_patch_metadata
@@ -56,6 +55,7 @@ class OpenSlideDataset(wsi.WholeSlide):
         self.image_slide = None
 
         image_slide = openslide.open_slide(self.wsi_path)
+        self.resolution_level = self._infer_level(image_slide, magnification)
         mask_slide = get_bg_rm_tool(self.calculate_mask_params)(image_slide) if self.calculate_mask else None
 
         try:
@@ -67,7 +67,37 @@ class OpenSlideDataset(wsi.WholeSlide):
         self.resolution = (image_slide.level_dimensions[self.resolution_level][1], image_slide.level_dimensions[self.resolution_level][0])
 
         image_slide.close()
-        
+
+    def _infer_level(self, wsi, magnification=0.5):
+        ## Handle datatype
+        if type(magnification) == str:
+                match magnification:
+                    case '40X':
+                        mpp=0.25
+                    case '20X':
+                        mpp=0.5
+                    case '10X':
+                        mpp=1.0
+                    case _:
+                        raise ValueError(f"{magnification} is not a supported level: [40X, 20X, 10X]")
+        elif type(magnification) == int:
+            return magnification
+        elif type(magnification) == float:
+            mpp = magnification
+        else: raise ValueError(f'Cannot infer magnification level from dtype {type(magnification)}')
+
+        ## Find closest level to desired mpp
+        try:
+            mpp_per_level = np.zeros(len(wsi.levels))
+            for i in range(len(wsi.levels)):
+                mpp_per_level[i] = wsi.properties[openslide.PROPERTY_NAME_MPP_X]*wsi.level_downsamples[i]
+            level = np.argmin(np.abs(mpp_per_level-mpp))
+            print(f"=== Selecting level {level} with {mpp_per_level[level]} as its closest to {mpp}")
+            return level
+        except:
+            print(f"=== Selecting level {1} with as accessing the direct mpp with openslide failed")
+            return 1
+            
     def __enter__(self):
         return self
     

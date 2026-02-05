@@ -54,7 +54,7 @@ def calculate_embedding_for_image(index, path, filename, image_id, image_meta=Fa
     #-COMPUTE EMBEDDING--------------------    
     with tc.autocast(device.split(':')[0], precision), tc.no_grad():
         tc.cuda.empty_cache()
-        embedding, _, sGP = calculate_embedding(precision, factory, device, image_path, CYTOMINE_CONFIG['level'], int(patch_size), int(patch_size), CYTOMINE_CONFIG['remove_bg'], transforms, patch_encoder, slide_encoder)
+        embedding, _, sGP = calculate_embedding(precision, factory, device, image_path, CYTOMINE_CONFIG['magnification'], int(patch_size), int(patch_size), CYTOMINE_CONFIG['remove_bg'], transforms, patch_encoder, slide_encoder)
         emb_pth = embeddings/f"{image_id}_embedding.pth"
         dt = {
             'filename': str(image_filename),
@@ -100,7 +100,7 @@ def calculate_embedding_for_image(index, path, filename, image_id, image_meta=Fa
     #log.info("--FINISHED--", json.dumps(result))
     return result
 
-def calculate_embedding(precision, factory, device, image, level, patch_size, patch_stride, remove_bg, transforms, patch_encoder, slide_encoder):
+def calculate_embedding(precision, factory, device, image, magnification, patch_size, patch_stride, remove_bg, transforms, patch_encoder, slide_encoder):
     with tc.autocast('cuda' if 'cuda' in device else 'cpu', precision):
         start = time.time()
         ## Encode query image
@@ -108,7 +108,7 @@ def calculate_embedding(precision, factory, device, image, level, patch_size, pa
                 wsi_path = image,
                 mask_path = None,
                 metadata_path = None,
-                resolution_level = level,
+                magnification = magnification,
                 patch_size = (patch_size, patch_size),
                 patch_stride = (patch_stride, patch_stride),
                 return_patch_metadata = False,
