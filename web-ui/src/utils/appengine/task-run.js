@@ -1,9 +1,29 @@
+import Vue from 'vue';
 import Model from './model';
 import Task from './task';
 import {Cytomine} from '@/api';
-import {BINARY_TYPES} from '@/utils/app';
 
 export default class TaskRun extends Model {
+  static get STATES() {
+    return {
+      CREATED: 'CREATED',
+      PROVISIONED: 'PROVISIONED',
+      QUEUING: 'QUEUING',
+      QUEUED: 'QUEUED',
+      PENDING: 'PENDING',
+      RUNNING: 'RUNNING',
+      FAILED: 'FAILED',
+      FINISHED: 'FINISHED',
+    };
+  }
+
+  static get TERMINAL_STATES() {
+    return new Set([
+      this.STATES.FAILED,
+      this.STATES.FINISHED,
+    ]);
+  }
+
   /** @inheritdoc */
   static get callbackIdentifier() {
     return '/app-engine/project/${project}/task-runs'; // not used
@@ -39,6 +59,14 @@ export default class TaskRun extends Model {
     return data;
   }
 
+  isFinished() {
+    return this.state === TaskRun.STATES.FINISHED;
+  }
+
+  isTerminalState() {
+    return TaskRun.TERMINAL_STATES.has(this.state);
+  }
+
   // Step-2: Provision task / user inputs
   async batchProvisionTask(params) {
     let {data} = await Cytomine.instance.api.put(`${this.uri}/input-provisions`, params);
@@ -57,31 +85,25 @@ export default class TaskRun extends Model {
   }
 
   async fetchInputs() {
-    this.inputs = (await Cytomine.instance.api.get(`${this.uri}/inputs`)).data;
+    if (this.state === TaskRun.STATES.CREATED) {
+      return null;
+    }
 
-    const binaryInputs = this.inputs.filter(input => BINARY_TYPES.includes(input.type.toLowerCase()));
+    const inputs = (await Cytomine.instance.api.get(`${this.uri}/inputs`)).data;
+    Vue.set(this, 'inputs', inputs);
 
-    await Promise.all(
-      binaryInputs.map(async (input) => {
-        input.value = await this.fetchSingleIO(input.param_name, 'input');
-      })
-    );
-
-    return this.inputs;
+    return inputs;
   }
 
   async fetchOutputs() {
-    this.outputs = (await Cytomine.instance.api.get(`${this.uri}/outputs`)).data;
+    if (this.state !== TaskRun.STATES.FINISHED) {
+      return null;
+    }
 
-    const binaryOutputs = this.outputs.filter(output => BINARY_TYPES.includes(output.type.toLowerCase()));
+    const outputs = (await Cytomine.instance.api.get(`${this.uri}/outputs`)).data;
+    Vue.set(this, 'outputs', outputs);
 
-    await Promise.all(
-      binaryOutputs.map(async (output) => {
-        output.value = await this.fetchSingleIO(output.param_name, 'output');
-      })
-    );
-
-    return this.outputs;
+    return outputs;
   }
 
   async fetchSingleIO(parameterName, type) {

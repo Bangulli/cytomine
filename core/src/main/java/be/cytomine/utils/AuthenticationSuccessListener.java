@@ -7,6 +7,7 @@ import be.cytomine.repository.security.SecUserSecRoleRepository;
 import be.cytomine.repository.security.UserRepository;
 import be.cytomine.service.CurrentRoleService;
 import be.cytomine.service.image.server.StorageService;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
@@ -17,6 +18,9 @@ import java.util.*;
 
 @Component
 public class AuthenticationSuccessListener implements ApplicationListener<AuthenticationSuccessEvent> {
+
+    @Autowired
+    private AuthenticationSuccessListener self; // necessary, otherwise spring will bypass the proxy for transactional
 
     @Autowired
     private UserRepository userRepository;
@@ -41,12 +45,23 @@ public class AuthenticationSuccessListener implements ApplicationListener<Authen
 
     }
 
-    private void saveUserOfToken(JwtAuthenticationToken jwtAuthenticationToken) {
-        Set<String> rolesFromAuthentication = extractRolesFromAuthentication(jwtAuthenticationToken);
+    protected void saveUserOfToken(JwtAuthenticationToken jwtAuthenticationToken) {
+
+        Set<String> rolesFromAuthentication =
+            extractRolesFromAuthentication(jwtAuthenticationToken);
         Map<String, Object> tokenAttributes = jwtAuthenticationToken.getTokenAttributes();
         UUID sub = UUID.fromString(tokenAttributes.get("sub").toString());
         Optional<User> userByReference = userRepository.findByReference(sub.toString());
-        if (userByReference.isEmpty()) {
+        Optional<User> userByUsername = userRepository.findByUsername(jwtAuthenticationToken.getName());
+        if (userByUsername.isPresent() && userByReference.isEmpty()) {
+            User user = userByUsername.get();
+            user.setReference(sub.toString());
+            userRepository.save(user);
+
+            self.updateRolesAndAdminSession(jwtAuthenticationToken, user, rolesFromAuthentication);
+
+        } else if (userByReference.isEmpty()) {
+
             User newUser = new User();
             newUser.setUsername(jwtAuthenticationToken.getName());
             newUser.setReference(sub.toString());
@@ -56,31 +71,53 @@ public class AuthenticationSuccessListener implements ApplicationListener<Authen
 
             //save domain into the database
             User savedUser = userRepository.save(newUser);
-
-            for (String role : rolesFromAuthentication) {
-                SecUserSecRole secSecUserSecRole = new SecUserSecRole();
-                secSecUserSecRole.setSecRole(secRoleRepository.getByAuthority(role));
-                secSecUserSecRole.setSecUser(savedUser);
-                secSecUserSecRoleRepository.save(secSecUserSecRole);
-            }
-            // create storage for the user
+            self.setCumulativeRole(rolesFromAuthentication, savedUser);
             storageService.initUserStorage(savedUser);
 
-            // activate admin session for user
             savedUser = userRepository.findByReference(sub.toString()).orElse(null);
             if (currentRoleService.hasCurrentUserAdminRole(savedUser)) {
-                currentRoleService.activeAdminSession(savedUser,jwtAuthenticationToken);
+                currentRoleService.activeAdminSession(savedUser, jwtAuthenticationToken);
             }
 
 
         } else {
-            // update authorities
             User user = userByReference.get();
+            self.updateRolesAndAdminSession(jwtAuthenticationToken, user, rolesFromAuthentication);
+        }
+    }
 
+    @Transactional
+    protected void updateRolesAndAdminSession(JwtAuthenticationToken jwtAuthenticationToken,
+                                              User user,
+                                              Set<String> rolesFromAuthentication) {
+
+        secSecUserSecRoleRepository.deleteAllByIdInBatch(
+            secSecUserSecRoleRepository.findAllBySecUser(user).stream()
+                .map(SecUserSecRole::getId).toList());
+        secSecUserSecRoleRepository.flush();
+        // Guest > User > Admin
+        self.setCumulativeRole(rolesFromAuthentication, user);
+
+        if (rolesFromAuthentication.contains("ROLE_ADMIN")) {
             if (currentRoleService.hasCurrentUserAdminRole(user)) {
-                currentRoleService.activeAdminSession(user,jwtAuthenticationToken);
+                currentRoleService.activeAdminSession(user, jwtAuthenticationToken);
             }
         }
+    }
+
+    @Transactional
+    protected void setCumulativeRole(Set<String> rolesFromAuthentication, User user) {
+
+        SecUserSecRole secSecUserSecRole = new SecUserSecRole();
+        if (rolesFromAuthentication.contains("ROLE_ADMIN")) {
+            secSecUserSecRole.setSecRole(secRoleRepository.getByAuthority("ROLE_ADMIN"));
+        } else if (rolesFromAuthentication.contains("ROLE_USER")) {
+            secSecUserSecRole.setSecRole(secRoleRepository.getByAuthority("ROLE_USER"));
+        } else {
+            secSecUserSecRole.setSecRole(secRoleRepository.getByAuthority("ROLE_GUEST"));
+        }
+        secSecUserSecRole.setSecUser(user);
+        secSecUserSecRoleRepository.save(secSecUserSecRole);
     }
 
     private static Set<String> extractRolesFromAuthentication(JwtAuthenticationToken jwtAuthenticationToken) {

@@ -1,5 +1,6 @@
+---
 global:
-  domainName: 'cytomine.local'
+  domainName: cytomine.local
 
 postgresql:
   storageClassName:
@@ -8,7 +9,6 @@ pims:
     storageClassName:
   tempImageStorage:
     storageClassName:
-  datasetImportFolder:
 mongodb:
   storageClassName:
 app_engine:
@@ -23,4 +23,4 @@ iam:
   lsaaiEndpoint:
 
 images:
-  imagePullSecretsName: docker-images-pull-secret
+  imagePullSecretsNames: [docker-images-pull-secret]

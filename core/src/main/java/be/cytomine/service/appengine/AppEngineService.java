@@ -1,21 +1,17 @@
 package be.cytomine.service.appengine;
 
+import be.cytomine.exceptions.AppEngineException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StreamUtils;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
 
 @Slf4j
@@ -43,18 +39,14 @@ public class AppEngineService {
         restTemplate.exchange(buildFullUrl(uri), HttpMethod.DELETE, null, Void.class);
     }
 
-    public File getStreamedFile(String uri) {
-        Path filePath = Paths.get("downloaded_" + System.currentTimeMillis() + ".tmp");
-        File targetFile = filePath.toFile();
-
+    public void getStreamedFile(String uri, OutputStream outputStream) {
         restTemplate.execute(buildFullUrl(uri), HttpMethod.GET, null, response -> {
-            try (InputStream in = response.getBody(); OutputStream out = new FileOutputStream(targetFile)) {
-                StreamUtils.copy(in, out);
+            try (InputStream in = response.getBody()) {
+                in.transferTo(outputStream);
                 return null;
             }
         });
 
-        return targetFile;
     }
 
     public <B> String sendWithBody(HttpMethod method, String uri, B body, MediaType contentType) {
@@ -65,7 +57,7 @@ public class AppEngineService {
             ResponseEntity<String> result = restTemplate.exchange(buildFullUrl(uri), method, request, String.class);
             return result.getBody();
         } catch (HttpStatusCodeException e) {
-            return e.getResponseBodyAsString();
+            throw new AppEngineException("error from appengine", e.getStatusCode().value(), e.getResponseBodyAsString());
         }
     }
 
@@ -87,7 +79,11 @@ public class AppEngineService {
         headers.setContentType(contentType);
 
         HttpEntity<B> requestEntity = new HttpEntity<>(body, headers);
-
-        return restTemplate.exchange(finalUrl, HttpMethod.POST, requestEntity, String.class).getBody();
+        try {
+            return restTemplate.exchange(finalUrl, HttpMethod.POST, requestEntity, String.class)
+                .getBody();
+        } catch (HttpStatusCodeException e) {
+            throw new AppEngineException("error from appengine", e.getStatusCode().value(), e.getResponseBodyAsString());
+        }
     }
 }

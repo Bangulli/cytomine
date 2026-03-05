@@ -51,10 +51,12 @@ import be.cytomine.appengine.exceptions.BundleArchiveException;
 import be.cytomine.appengine.exceptions.FileStorageException;
 import be.cytomine.appengine.exceptions.RegistryException;
 import be.cytomine.appengine.exceptions.RunTaskServiceException;
+import be.cytomine.appengine.exceptions.SchedulingException;
 import be.cytomine.appengine.exceptions.TaskNotFoundException;
 import be.cytomine.appengine.exceptions.TaskServiceException;
 import be.cytomine.appengine.exceptions.ValidationException;
 import be.cytomine.appengine.handlers.RegistryHandler;
+import be.cytomine.appengine.handlers.SchedulerHandler;
 import be.cytomine.appengine.handlers.StorageData;
 import be.cytomine.appengine.handlers.StorageDataType;
 import be.cytomine.appengine.handlers.StorageHandler;
@@ -79,6 +81,10 @@ public class TaskService {
     private final TaskRepository taskRepository;
 
     private final RunRepository runRepository;
+
+    private final RunService runService;
+
+    private final SchedulerHandler schedulerHandler;
 
     private final StorageHandler fileStorageHandler;
 
@@ -417,6 +423,7 @@ public class TaskService {
                 input.setName(inputKey);
                 input.setDisplayName(inputValue.get("display_name").textValue());
                 input.setDescription(inputValue.get("description").textValue());
+                input.setOptional(inputValue.path("optional").asBoolean(false));
                 // use type factory to generate the correct type
                 input.setType(TypeFactory.createType(inputValue, charset));
                 input.setParameterType(ParameterType.INPUT);
@@ -486,12 +493,51 @@ public class TaskService {
                 a.setLastName(author.get("last_name").textValue());
                 a.setOrganization(author.get("organization").textValue());
                 a.setEmail(author.get("email").textValue());
-                a.setContact(author.get("is_contact").asBoolean());
+                a.setContact(author.path("is_contact").asBoolean(false));
                 authors.add(a);
             }
         }
         log.info("UploadTask: successful authors ");
         return authors;
+    }
+
+    private void deleteTaskStorageIfExists(Task task) {
+        String storageName = task.getStorageReference();
+        try {
+            log.info("Deleting storage '{}'", storageName);
+            Storage storage = new Storage(storageName);
+            fileStorageHandler.deleteStorage(storage);
+            log.info("Storage '{}' successfully deleted", storageName);
+        } catch (FileStorageException e) {
+            log.error(
+                    "Failed to delete storage '{}': [{}]. Skipping.",
+                    storageName,
+                    e.getMessage());
+        }
+    }
+
+    public void deleteTask(Task task) throws RegistryException, SchedulingException {
+        String identifier = task.getNamespace() + ":" + task.getVersion();
+
+        log.info("Deleting all storage runs associated with task '{}'", identifier);
+        for (Run run : task.getRuns()) {
+            runService.deleteStorageIfExists("task-run-inputs-" + run.getId());
+            runService.deleteStorageIfExists("task-run-outputs-" + run.getId());
+        }
+
+        log.info("Deleting all runs on cluster associated with task '{}'", identifier);
+        for (Run run : task.getRuns()) {
+            schedulerHandler.deleteRun(run);
+        }
+
+        log.info("Deleting task '{}' storage", identifier);
+        deleteTaskStorageIfExists(task);
+
+        log.info("Deleting task image '{}' from registry", task.getImageName());
+        registryHandler.deleteImage(task.getImageName());
+
+        log.info("Deleting task '{}' from database", identifier);
+        taskRepository.deleteByNamespaceAndVersion(task.getNamespace(), task.getVersion());
     }
 
     public StorageData retrieveYmlDescriptor(String namespace, String version)
@@ -767,5 +813,17 @@ public class TaskService {
             throw new TaskServiceException(error);
         }
         return file;
+    }
+
+    public List<TaskRun> getRunsByTask(Task task) {
+        List<Run> runs = runRepository.findAllByTask(task);
+
+        return runs.stream()
+                .map(run -> new TaskRun(
+                        run.getId(),
+                        makeTaskDescription(run.getTask()),
+                        run.getState())
+                )
+                .collect(Collectors.toList());
     }
 }

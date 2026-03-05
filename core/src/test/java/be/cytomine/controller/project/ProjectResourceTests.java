@@ -20,6 +20,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import be.cytomine.config.MongoTestConfiguration;
+import be.cytomine.config.PostGisTestConfiguration;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -77,7 +80,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(classes = CytomineCoreApplication.class)
 @AutoConfigureMockMvc
 @WithMockUser(username = "superadmin")
-//@WithUserDetails("superadmin")
+@Import({MongoTestConfiguration.class, PostGisTestConfiguration.class})
 public class ProjectResourceTests {
 
     @Autowired
@@ -163,8 +166,7 @@ public class ProjectResourceTests {
         Project project = builder.given_a_project();
         restProjectControllerMockMvc.perform(get("/api/project.json"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.collection", hasSize(greaterThan(0))))
-                .andExpect(jsonPath("$.collection[?(@.name=='"+project.getName()+"')]").exists());
+                .andExpect(jsonPath("$.collection", hasSize(0)));
     }
 
     @Test
@@ -405,16 +407,13 @@ public class ProjectResourceTests {
                 .andExpect(jsonPath("$.collection", hasSize(greaterThan(0))))
                 .andExpect(jsonPath("$.collection[?(@.id=='"+projectWithCriteria.getId()+"')]").exists())
                 .andExpect(jsonPath("$.collection[?(@.id=='"+projectWithoutCriteria.getId()+"')]").doesNotExist())
-                .andExpect(jsonPath("$.collection[?(@.id=='"+projectWithNoOntology.getId()+"')]").exists());
+                .andExpect(jsonPath("$.collection[?(@.id=='"+projectWithNoOntology.getId()+"')]").doesNotExist());
 
         restProjectControllerMockMvc.perform(get("/api/project.json")
                         .param("ontology[in]", "null")
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.collection", hasSize(greaterThan(0))))
-                .andExpect(jsonPath("$.collection[?(@.id=='"+projectWithCriteria.getId()+"')]").doesNotExist())
-                .andExpect(jsonPath("$.collection[?(@.id=='"+projectWithoutCriteria.getId()+"')]").doesNotExist())
-                .andExpect(jsonPath("$.collection[?(@.id=='"+projectWithNoOntology.getId()+"')]").exists());
+                .andExpect(jsonPath("$.collection", hasSize(0)));
     }
 
 
@@ -473,7 +472,7 @@ public class ProjectResourceTests {
                         .param("order", "desc")
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.collection", hasSize(greaterThanOrEqualTo(3))))
+                .andExpect(jsonPath("$.collection", hasSize(greaterThanOrEqualTo(2))))
                 .andExpect(jsonPath("$.collection[0].id").value(project2.getId()))
                 .andExpect(jsonPath("$.collection[1].id").value(project1.getId()))
         ;

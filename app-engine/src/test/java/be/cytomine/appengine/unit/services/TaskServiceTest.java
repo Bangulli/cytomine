@@ -1,14 +1,12 @@
 package be.cytomine.appengine.unit.services;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import be.cytomine.appengine.utils.DescriptorHelper;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -18,26 +16,29 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.mock.web.MockHttpServletRequest;
 
 import be.cytomine.appengine.dto.handlers.filestorage.Storage;
 import be.cytomine.appengine.dto.inputs.task.TaskDescription;
 import be.cytomine.appengine.dto.inputs.task.TaskRun;
 import be.cytomine.appengine.exceptions.FileStorageException;
+import be.cytomine.appengine.exceptions.RegistryException;
 import be.cytomine.appengine.exceptions.RunTaskServiceException;
+import be.cytomine.appengine.exceptions.SchedulingException;
 import be.cytomine.appengine.exceptions.TaskNotFoundException;
 import be.cytomine.appengine.exceptions.TaskServiceException;
 import be.cytomine.appengine.handlers.RegistryHandler;
+import be.cytomine.appengine.handlers.SchedulerHandler;
 import be.cytomine.appengine.handlers.StorageData;
 import be.cytomine.appengine.handlers.StorageHandler;
 import be.cytomine.appengine.models.task.Run;
 import be.cytomine.appengine.models.task.Task;
 import be.cytomine.appengine.repositories.RunRepository;
 import be.cytomine.appengine.repositories.TaskRepository;
+import be.cytomine.appengine.services.RunService;
 import be.cytomine.appengine.services.TaskService;
 import be.cytomine.appengine.services.TaskValidationService;
 import be.cytomine.appengine.states.TaskRunState;
-import be.cytomine.appengine.utils.ArchiveUtils;
+import be.cytomine.appengine.utils.DescriptorHelper;
 import be.cytomine.appengine.utils.TaskUtils;
 import be.cytomine.appengine.utils.TestTaskBuilder;
 
@@ -47,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,16 +57,19 @@ import static org.mockito.Mockito.when;
 public class TaskServiceTest {
 
     @Mock
-    private ArchiveUtils archiveUtils;
+    private RegistryHandler registryHandler;
 
     @Mock
-    private RegistryHandler registryHandler;
+    private SchedulerHandler schedulerHandler;
 
     @Mock
     private StorageHandler storageHandler;
 
     @Mock
     private RunRepository runRepository;
+
+    @Mock
+    private RunService runService;
 
     @Mock
     private TaskRepository taskRepository;
@@ -346,5 +351,48 @@ public class TaskServiceTest {
         assertEquals(expectedMessage, exception.getMessage());
         verify(taskRepository, times(1)).findByNamespaceAndVersion(task.getNamespace(), task.getVersion());
         verify(runRepository, times(0)).saveAndFlush(any(Run.class));
+    }
+
+    @DisplayName("Should delete a task successfully")
+    @Test
+    void shouldDeleteTaskSuccessfully() throws FileStorageException, RegistryException, SchedulingException {
+        taskService.deleteTask(task);
+
+        verify(registryHandler, times(1)).deleteImage(task.getImageName());
+        verify(storageHandler, times(1)).deleteStorage(any(Storage.class));
+        verify(taskRepository, times(1)).deleteByNamespaceAndVersion(task.getNamespace(), task.getVersion());
+    }
+
+    @DisplayName("Should delete a task with runs successfully")
+    @Test
+    void shouldDeleteTaskWithRunsSuccessfully() throws FileStorageException, RegistryException, SchedulingException {
+        Task mockTask = mock(Task.class);
+
+        UUID uuid1 = UUID.randomUUID();
+        UUID uuid2 = UUID.randomUUID();
+        Run run1 = mock(Run.class);
+        Run run2 = mock(Run.class);
+        when(run1.getId()).thenReturn(uuid1);
+        when(run2.getId()).thenReturn(uuid2);
+
+        when(mockTask.getRuns()).thenReturn(Arrays.asList(run1, run2));
+        when(mockTask.getNamespace()).thenReturn("test-namespace");
+        when(mockTask.getVersion()).thenReturn("1.0");
+        when(mockTask.getImageName()).thenReturn("test-image");
+        when(mockTask.getStorageReference()).thenReturn("task-uuid-def");
+
+        taskService.deleteTask(mockTask);
+
+        verify(runService, times(1)).deleteStorageIfExists("task-run-inputs-" + uuid1);
+        verify(runService, times(1)).deleteStorageIfExists("task-run-outputs-" + uuid1);
+        verify(runService, times(1)).deleteStorageIfExists("task-run-inputs-" + uuid2);
+        verify(runService, times(1)).deleteStorageIfExists("task-run-outputs-" + uuid2);
+
+        verify(schedulerHandler, times(1)).deleteRun(run1);
+        verify(schedulerHandler, times(1)).deleteRun(run2);
+
+        verify(registryHandler, times(1)).deleteImage(mockTask.getImageName());
+        verify(storageHandler, times(1)).deleteStorage(any(Storage.class));
+        verify(taskRepository, times(1)).deleteByNamespaceAndVersion(mockTask.getNamespace(), mockTask.getVersion());
     }
 }

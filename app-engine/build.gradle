@@ -47,11 +47,7 @@ ext {
 springBoot {
     mainClass = "be.cytomine.appengine.AppEngineApplication"
 }
-test {
-    filter {
-        excludeTestsMatching "be.cytomine.appengine.integration.*"
-    }
-}
+
 dependencies {
     // Lombok
     implementation "org.mapstruct:mapstruct:${mapstructVersion}", "org.projectlombok:lombok:${lombokVersion}"
@@ -67,6 +63,7 @@ dependencies {
         exclude group:'org.springframework.boot', module:'spring-boot-jackson'
     }
     implementation 'org.springframework.boot:spring-boot-jackson2'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     compileOnly("org.springframework.boot:spring-boot-devtools")
 
@@ -126,7 +123,6 @@ dependencies {
     testImplementation "org.testcontainers:testcontainers-postgresql"
     testImplementation "org.testcontainers:testcontainers"
     testImplementation "org.testcontainers:testcontainers-k3s"
-
 }
 
 tasks.named('test') {
