@@ -222,7 +222,7 @@ services:
 
   wsi-cbir:
     stop_grace_period: 2m
-    image: cytomine/wsi-cbir:latest
+    image: lokuhn/wsi-cbir:1.1.1
     restart: unless-stopped
     #depends_on: NOTE: for now based ont json/dicts
     #  - redis

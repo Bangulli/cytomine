@@ -16,8 +16,6 @@ import tiffslide
 import cv2
 ### Internal Imports ###
 from src.utils.switch_case import SwitchCase
-import logging
-log = logging.getLogger("uvicorn.error")
 ########################
 
 class Otsu:
@@ -27,7 +25,7 @@ class Otsu:
         w, h = thumbnail.size
         thumbnail = thumbnail.crop((w*0.1, h*0.1, w*0.9, h*0.9)) ## Crop edges to avoid bad thresholding
         self.gs_threshold = skimage.filters.threshold_otsu(np.array(thumbnail)) 
-        log.info(f"==== Otsu threshold is {self.gs_threshold}")
+        print(f"==== Otsu threshold is {self.gs_threshold}")
         
     def _get_thumbnail(self, size=512):
         with SwitchCase(type(self.wsi)) as switch:
@@ -40,6 +38,11 @@ class Otsu:
     
     def read_region(self, coords, level, patch_size):
         mask_patch = self.wsi.read_region(coords, level, patch_size).convert("L")
+        mask_patch = np.array(mask_patch)<self.gs_threshold # binarize: bg is bright, fg is dark
+        return mask_patch
+    
+    def read_region_mm(self, coords_mm, mm_per_pixel, patch_size_mm):
+        mask_patch = self.wsi.read_region_mm(coords_mm, mm_per_pixel, patch_size_mm).convert("L")
         mask_patch = np.array(mask_patch)<self.gs_threshold # binarize: bg is bright, fg is dark
         return mask_patch
     
@@ -59,7 +62,7 @@ class DilatedOtsu:
         w, h = thumbnail.size
         thumbnail = thumbnail.crop((w*0.1, h*0.1, w*0.9, h*0.9)) ## Crop edges to avoid bad thresholding
         self.gs_threshold = skimage.filters.threshold_otsu(np.array(thumbnail)) 
-        log.info(f"==== Otsu threshold is {self.gs_threshold}")
+        print(f"==== Otsu threshold is {self.gs_threshold}")
         self.se_rad_microns = se_rad_microns
         
         # None inits
@@ -99,16 +102,32 @@ class DilatedOtsu:
     
     def read_region(self, coords, level, patch_size): ## passed coords are w, h
         if self.seg_thmbnl is None: self.seg_thmbnl = self.get_segmented_thumbnail(level, 5000)
-        if self.multiplier is None: self.multiplier = np.array(self._get_region_to_thmbnl_converter(level)); log.info(f"=== Patch size scaled to {np.round(patch_size*self.multiplier).astype(int)} in thumbnail of size {self.seg_thmbnl.shape}")
+        if self.multiplier is None: self.multiplier = np.array(self._get_region_to_thmbnl_converter(level)); print(f"=== Patch size scaled to {np.round(patch_size*self.multiplier).astype(int)} in thumbnail of size {self.seg_thmbnl.shape}")
         coords_in_thmbnl = np.round(coords*self.multiplier).astype(int)
         patch_size_in_thmbnl = np.round(patch_size*self.multiplier).astype(int)
         patch_size_in_thmbnl = np.maximum(patch_size_in_thmbnl, [1, 1])
         return self.seg_thmbnl[coords_in_thmbnl[1]:coords_in_thmbnl[1]+patch_size_in_thmbnl[1], coords_in_thmbnl[0]:coords_in_thmbnl[0]+patch_size_in_thmbnl[0]] ## NOTE flipped coords, because numpy expects height, width
-    
+     
     def _get_region_to_thmbnl_converter(self, level): # returns width, height
         thmbnl_shape = self.seg_thmbnl.shape ## height, width
         wsi_at_level_shape = self._get_resolution(level)
         return thmbnl_shape[1]/wsi_at_level_shape[0], thmbnl_shape[0]/wsi_at_level_shape[1]
+    
+    def read_region_mm(self, coords_mm, mm_per_pixel, patch_size_mm):
+        if self.seg_thmbnl is None: self.seg_thmbnl = self.get_segmented_thumbnail(0, 5000)
+        if self.multiplier is None: self.multiplier = np.array(self._get_mm_to_thmbnl_coords_converter(mm_per_pixel)); print(f"=== Patch size scaled to {np.round(np.asarray(patch_size_mm)*self.multiplier).astype(int)} in thumbnail of size {self.seg_thmbnl.shape}")
+        coords_in_thmbnl = np.round((np.asarray(coords_mm)*self.multiplier)).astype(int)
+        patch_size_in_thmbnl = np.round(np.asarray(patch_size_mm)*self.multiplier).astype(int)
+        patch_size_in_thmbnl = np.maximum(patch_size_in_thmbnl, [1, 1])
+        return self.seg_thmbnl[coords_in_thmbnl[1]:coords_in_thmbnl[1]+patch_size_in_thmbnl[1], coords_in_thmbnl[0]:coords_in_thmbnl[0]+patch_size_in_thmbnl[0]] ## NOTE flipped coords, because numpy expects height, width
+       
+    def _get_mm_to_thmbnl_coords_converter(self, mmpp):
+        thmbnl_shape = self.seg_thmbnl.shape ## height, width
+        wsi_at_level_shape = self._get_resolution(0)
+        mpp_at_level = self._get_level_mpp(0)
+        level_to_thmbnl = wsi_at_level_shape[1]/thmbnl_shape[0] #h/h
+        mpp_at_thmbnl = mpp_at_level*level_to_thmbnl
+        return 1/(mpp_at_thmbnl/1000) ### returns um per pixel in thumbnail
         
     def _get_resolution(self, level): # returns width, height
         with SwitchCase(type(self.wsi)) as switch:
@@ -144,7 +163,7 @@ class CleanedOtsu:
         w, h = thumbnail.size
         thumbnail = thumbnail.crop((w*0.1, h*0.1, w*0.9, h*0.9)) ## Crop edges to avoid bad thresholding
         self.gs_threshold = skimage.filters.threshold_otsu(np.array(thumbnail)) 
-        log.info(f"==== Otsu threshold is {self.gs_threshold}")
+        print(f"==== Otsu threshold is {self.gs_threshold}")
         self.se_rad_microns = se_rad_microns
         
         # None inits
@@ -184,7 +203,7 @@ class CleanedOtsu:
     
     def read_region(self, coords, level, patch_size): ## passed coords are w, h
         if self.seg_thmbnl is None: self.seg_thmbnl = self.get_segmented_thumbnail(level, 5000)
-        if self.multiplier is None: self.multiplier = np.array(self._get_region_to_thmbnl_converter(level)); log.info(f"=== Patch size scaled to {np.round(patch_size*self.multiplier).astype(int)} in thumbnail of size {self.seg_thmbnl.shape}")
+        if self.multiplier is None: self.multiplier = np.array(self._get_region_to_thmbnl_converter(level)); print(f"=== Patch size scaled to {np.round(patch_size*self.multiplier).astype(int)} in thumbnail of size {self.seg_thmbnl.shape}")
         coords_in_thmbnl = np.round(coords*self.multiplier).astype(int)
         patch_size_in_thmbnl = np.round(patch_size*self.multiplier).astype(int)
         patch_size_in_thmbnl = np.maximum(patch_size_in_thmbnl, [1, 1])
@@ -195,6 +214,22 @@ class CleanedOtsu:
         wsi_at_level_shape = self._get_resolution(level)
         return thmbnl_shape[1]/wsi_at_level_shape[0], thmbnl_shape[0]/wsi_at_level_shape[1]
         
+    def read_region_mm(self, coords_mm, mm_per_pixel, patch_size_mm):
+        if self.seg_thmbnl is None: self.seg_thmbnl = self.get_segmented_thumbnail(0, 5000)
+        if self.multiplier is None: self.multiplier = np.array(self._get_mm_to_thmbnl_coords_converter(mm_per_pixel)); print(f"=== Patch size scaled to {np.round(np.asarray(patch_size_mm)*self.multiplier).astype(int)} in thumbnail of size {self.seg_thmbnl.shape}")
+        coords_in_thmbnl = np.round((np.asarray(coords_mm)*self.multiplier)).astype(int)
+        patch_size_in_thmbnl = np.round(np.asarray(patch_size_mm)*self.multiplier).astype(int)
+        patch_size_in_thmbnl = np.maximum(patch_size_in_thmbnl, [1, 1])
+        return self.seg_thmbnl[coords_in_thmbnl[1]:coords_in_thmbnl[1]+patch_size_in_thmbnl[1], coords_in_thmbnl[0]:coords_in_thmbnl[0]+patch_size_in_thmbnl[0]] ## NOTE flipped coords, because numpy expects height, width
+       
+    def _get_mm_to_thmbnl_coords_converter(self, mmpp):
+        thmbnl_shape = self.seg_thmbnl.shape ## height, width
+        wsi_at_level_shape = self._get_resolution(0)
+        mpp_at_level = self._get_level_mpp(0)
+        level_to_thmbnl = wsi_at_level_shape[1]/thmbnl_shape[0] #h/h
+        mpp_at_thmbnl = mpp_at_level*level_to_thmbnl
+        return 1/(mpp_at_thmbnl/1000) ### returns um per pixel in thumbnail
+    
     def _get_resolution(self, level): # returns width, height
         with SwitchCase(type(self.wsi)) as switch:
             if switch.case(wsidicom.WsiDicom):

@@ -42,7 +42,7 @@ services:
       context: ./cbir/
 
   wsi-cbir:
-    image: cytomine/wsi-cbir:latest
+    image: lokuhn/wsi-cbir:1.1.1
     build:
       context: ./wsi-cbir/
 

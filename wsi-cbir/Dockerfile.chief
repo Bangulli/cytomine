@@ -17,12 +17,10 @@ RUN python -m pip install --upgrade pip wheel setuptools
 
 WORKDIR /app
 COPY wsi-cbir/src/ /app/src/
-COPY requirements_gigapath.txt /app/requirements_gigapath.txt
-RUN python -m pip install -r /app/requirements_gigapath.txt \
+COPY requirements_chief.txt /app/requirements_chief.txt
+RUN python -m pip install -r /app/requirements_chief.txt \
  && python -m pip install fastapi uvicorn[standard] \
  && rm -rf /root/.cache/pip
-RUN python -m pip install flash-attn==2.8.0.post2 --no-build-isolation
-RUN python -m pip install wsidicom
 
 ########################
 # 2) Runtime stage
@@ -45,8 +43,8 @@ WORKDIR /app
 COPY wsi-cbir/src/ /app/src/
 COPY wsi-cbir/api/ /app/api/
 COPY wsi-cbir/app.py /app/app.py
-COPY data/model_weights/provgigapath_patch_raw.pth /model_weights/
-COPY data/model_weights/provgigapath_slide.pth /model_weights/
+COPY data/model_weights/CHIEF_patch.pth /model_weights/
+COPY data/model_weights/CHIEF_slide.pth /model_weights/
 
 
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "6001"]

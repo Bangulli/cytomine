@@ -13,11 +13,10 @@ import numpy as np
 import torch as tc
 from wsidicom import WsiDicom
 import skimage
+import PIL
 ### Internal Imports ###
 import wsi
 from src.datasets.bg_removal import get_bg_rm_tool
-import logging
-log = logging.getLogger("uvicorn.error")
 ########################
 
 class WsiDicomDataset(wsi.WholeSlide):
@@ -28,7 +27,7 @@ class WsiDicomDataset(wsi.WholeSlide):
         wsi_path : Union[str, Path],
         mask_path : Union[str, Path, None],
         metadata_path : Union[str, Path, None], 
-        magnification : Union[str, float, int],
+        target_mpp : float,
         patch_size : tuple,
         patch_stride: tuple,
         return_patch_metadata : bool = False,
@@ -59,15 +58,18 @@ class WsiDicomDataset(wsi.WholeSlide):
             pass # TODO - handle external metadata
 
         image_slide = WsiDicom.open(self.wsi_path)
-        self.resolution_level = self._infer_level(image_slide, magnification)
-        assert self.resolution_level<len(image_slide.levels), f"User requested level {self.resolution_level}, but the loaded DICOM WSI only has {len(image_slide.levels)} levels: {image_slide.levels}"
-
-        mask_slide = get_bg_rm_tool(self.calculate_mask_params)(image_slide) if self.calculate_mask else None
-            
-        self.mpp = (image_slide.levels[self.resolution_level].mpp.width, image_slide.levels[self.resolution_level].mpp.height)
+        try: self.resolution_level = self._infer_level(image_slide, target_mpp); self.resample=False
+        except Exception as e: self.resample = True; self.resolution_level=None; print(e)
         
-        self.upper_left_corners, self.coordinates = self.calculate_upper_left_corners(image_slide, mask_slide)
-        self.resolution = (image_slide.levels[self.resolution_level].size.height, image_slide.levels[self.resolution_level].size.width)
+        mask_slide = get_bg_rm_tool(self.calculate_mask_params)(image_slide) if self.calculate_mask else None
+        
+        if not self.resample: 
+            self.mpp = (image_slide.levels[self.resolution_level].mpp.width, image_slide.levels[self.resolution_level].mpp.height)
+            self.upper_left_corners, self.coordinates = self.calculate_upper_left_corners(image_slide, mask_slide)
+            self.resolution = (image_slide.levels[self.resolution_level].size.height, image_slide.levels[self.resolution_level].size.width)
+        else: 
+            self.mpp = (target_mpp, target_mpp)
+            self.upper_left_corners, self.coordinates = self.calculate_upper_left_corners_resampled(image_slide, mask_slide) ## self.resolution is set inside this func
 
         image_slide.close()
         
@@ -105,34 +107,85 @@ class WsiDicomDataset(wsi.WholeSlide):
                     corners.append(coordinate)
                     coordinates.append(coordinate_given_level)
         corners = np.array(corners)
-        log.info(f"=== Obtained {corners.shape[0]} patches for image")
+        print(f"=== Obtained {corners.shape[0]} patches for image")
         coordinates = np.array(coordinates)
         return corners, coordinates
     
-    def _infer_level(self, wsi, magnification=0.5):
-        ## Handle datatype
-        if type(magnification) == str:
-                match magnification:
-                    case '40X':
-                        mpp=0.25
-                    case '20X':
-                        mpp=0.5
-                    case '10X':
-                        mpp=1.0
-                    case _:
-                        raise ValueError(f"{magnification} is not a supported level: [40X, 20X, 10X]")
-        elif type(magnification) == int:
-            return magnification
-        elif type(magnification) == float:
-            mpp = magnification
-        else: raise ValueError(f'Cannot infer magnification level from dtype {type(magnification)}')
+    def calculate_upper_left_corners_resampled(self, image_slide : WsiDicom, mask_slide : WsiDicom=None, mpp=0.5):
+        """Calculates the coordinates of the upper left corners of every patch in the slide given the patch stride and patch size arguments
+        Args:
+            image_slide (WsiDicom): _description_
+            mask_slide (WsiDicom, optional): _description_. Defaults to None.
 
-        ## Find closest level to desired mpp
+        Returns:
+            _type_: _description_
+        """
+        um2mm = 0.001 ## um * um2mm = mm (u = mu) converter
+        self.mm_p_px = mpp*um2mm
+        
+        ## convert image size to mm coordinates
+        height = image_slide.levels[0].size.height 
+        width = image_slide.levels[0].size.width 
+        print(f"=== Original resolution at level 0 = {image_slide.levels[0].mpp.height}mpp is {(height, width)}")
+        height_mpp = height*image_slide.levels[0].mpp.height
+        width_mpp = width*image_slide.levels[0].mpp.width
+        height_mm = height_mpp*um2mm
+        width_mm = width_mpp*um2mm
+        
+        ## write resolution at mpp
+        self.resolution=(round(height_mpp/mpp), round(width_mpp/mpp))
+        print(f"=== Resolution at {mpp} is {self.resolution}")
+        
+        ## convert strides to mm
+        step_height_px = self.patch_stride[0]
+        step_width_px = self.patch_stride[1]
+        step_height_mm = self.patch_stride[0]*mpp*um2mm
+        step_width_mm = self.patch_stride[1]*mpp*um2mm
+        
+        ## convert patch size to mm
+        patch_height_mm = self.patch_size[0]*mpp*um2mm
+        patch_width_mm = self.patch_size[1]*mpp*um2mm
+        
+        ## overwrite stirdes and sizes
+        self.patch_size = (patch_height_mm,patch_width_mm)
+        self.patch_stride = (step_height_mm,step_width_mm)
+        
+        ## generate patches
+        corners = []
+        coordinates = []
+        self.number_of_rows = len(list(range(0, round(self.resolution[0] - step_height_px), step_height_px)))
+        self.number_of_cols = len(list(range(0, round(self.resolution[1] - step_width_px), step_width_px)))
+
+        for y in range(0, round(self.resolution[0] - step_height_px), step_height_px):
+            for x in range(0, round(self.resolution[1] - step_width_px), step_width_px):
+                coordinate = np.array([float(x*mpp*um2mm), float(y*mpp*um2mm)]) ## width, height
+                coordinate_given_level = np.array([int(x), int(y)])
+                ## mask case
+                if mask_slide is not None:
+                    mask_patch = mask_slide.read_region_mm((coordinate[0], coordinate[1]), self.mm_p_px, (patch_width_mm, patch_height_mm))
+                    if np.any(mask_patch):
+                    #if np.sum(mask_patch)/3000 > 0.5:
+                        corners.append(coordinate) ## the coord for load
+                        coordinates.append(coordinate_given_level) ## the coord for the model
+                        
+                ## full case 
+                else:
+                    corners.append(coordinate)
+                    coordinates.append(coordinate_given_level)
+                    
+        corners = np.array(corners)
+        print(f"=== Obtained {corners.shape[0]} patches for image")
+        coordinates = np.array(coordinates)
+        return corners, coordinates
+
+    def _infer_level(self, wsi, mpp=0.5, tolerance=0.06):
         mpp_per_level = np.zeros(len(wsi.levels))
         for i in range(len(wsi.levels)):
             mpp_per_level[i] = wsi.levels[i].mpp.width
         level = np.argmin(np.abs(mpp_per_level-mpp))
         print(f"=== Selecting level {level} with {mpp_per_level[level]} as its closest to {mpp}")
+        if abs(mpp_per_level[level]-mpp)>tolerance:
+            raise ValueError(f"===!! The discrepancy between the closest level and the desired level is too high.")
         return level
     
     def _ensure_image_is_open(self):
@@ -143,7 +196,8 @@ class WsiDicomDataset(wsi.WholeSlide):
             
     def load_patch_at(self, coordinates):
         self._ensure_image_is_open()
-        patch = self.image_slide.read_region(coordinates, self.resolution_level, self.patch_size).convert('RGB')
+        if not self.resample: patch = self.image_slide.read_region(coordinates, self.resolution_level, self.patch_size).convert('RGB')
+        else: patch = self.image_slide.read_region_mm(coordinates, self.mm_p_px, self.patch_size).convert('RGB')
         patch = np.array(patch)
         return patch
 
