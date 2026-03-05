@@ -22,3 +22,4 @@ data/
 
 # env
 .venv/
+wsi-cbir/wsi-cbir/src/networks/CHIEF/

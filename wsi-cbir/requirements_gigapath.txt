@@ -108,5 +108,6 @@ huggingface-hub
 scikit-image
 opencv-python
 faiss-cpu
+psutil
 #flash_attn==2.8.0.post2 # when installin with pip fails due to torch not being installed previously. Works when running requirements first and then installing flash_attn later. 
 #wsidicom # adding wsidicom to the list of requirements causes loads of dependency conflicts
