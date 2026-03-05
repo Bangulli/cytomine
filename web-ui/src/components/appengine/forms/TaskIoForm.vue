@@ -49,7 +49,6 @@ export default {
   },
   async created() {
     await this.fetchTaskInputs();
-    await this.task.fetchOutputs();
   },
   watch: {
     async task() {
@@ -95,16 +94,13 @@ export default {
           await Task.batchProvisionTask(this.projectId, taskRun.id, this.getInputProvisions());
         }
 
-        await Task.runTask(this.projectId, taskRun.id).then(async (event) => {
+        await Task.runTask(this.projectId, taskRun.id).then(async (taskRun) => {
           this.$buefy.toast.open({message: this.$t('app-engine.run.started'), type: 'is-success'});
           this.resetForm();
-          this.$emit('appengine:task:started', event);
+          this.$emit('appengine:task:started', taskRun);
         });
       } catch (e) {
-        const serverError = e.response && e.response.data
-          ? (e.response.data.message || e.response.data.errorCode)
-          : e.message;
-        this.$buefy.toast.open({message: `Error : ${serverError}`, type: 'is-danger', indefinite: true});
+        this.$buefy.toast.open({message: e.message, type: 'is-danger'});
       }
     },
     getInputProvisions() {
@@ -119,8 +115,6 @@ export default {
       return provisions;
     },
     resetForm() {
-      this.inputs = {};
-
       const setDefaultValue = (input) => {
         const value = (() => {
           if (input.default === 'null') {

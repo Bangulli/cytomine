@@ -18,18 +18,13 @@ package be.cytomine.domain;
 
 import be.cytomine.BasicInstanceBuilder;
 import be.cytomine.CytomineCoreApplication;
-import be.cytomine.config.CustomIdentifierGenerator;
-import be.cytomine.config.MongoTestConfiguration;
-import be.cytomine.config.PostGisTestConfiguration;
 import be.cytomine.domain.ontology.Ontology;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import java.util.Date;
@@ -40,15 +35,12 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 @SpringBootTest(classes = CytomineCoreApplication.class)
 @AutoConfigureMockMvc
 @WithMockUser(authorities = "ROLE_SUPER_ADMIN", username = "superadmin")
-@Import({MongoTestConfiguration.class, PostGisTestConfiguration.class})
 @Transactional
 public class CytomineDomainTests {
 
     @Autowired
     BasicInstanceBuilder builder;
 
-    @Autowired
-    EntityManager em;
 
     @Test
     void assign_id_automatically() {
@@ -83,27 +75,5 @@ public class CytomineDomainTests {
         Date afterUpdate = new Date();
 
         assertThat(ontology.getUpdated()).isBetween(beforeUpdate, afterUpdate, true, true);
-    }
-
-    @Test
-    void preserve_preassigned_id() {
-        Long preassignedId = 999999999L;
-        Ontology ontology = BasicInstanceBuilder.given_a_not_persisted_ontology();
-        ontology.setId(preassignedId);
-        assertThat(ontology.getId()).isEqualTo(preassignedId);
-        ontology = builder.persistAndReturn(ontology);
-        assertThat(ontology.getId()).isEqualTo(preassignedId);
-
-        // Verify it can be retrieved from the database with the same ID
-        em.clear();
-        Ontology retrieved = em.find(Ontology.class, preassignedId);
-        assertThat(retrieved).isNotNull();
-        assertThat(retrieved.getId()).isEqualTo(preassignedId);
-    }
-
-    @Test
-    void custom_identifier_generator_allows_assigned_identifiers() {
-        CustomIdentifierGenerator generator = new CustomIdentifierGenerator();
-        assertThat(generator.allowAssignedIdentifiers()).isTrue();
     }
 }

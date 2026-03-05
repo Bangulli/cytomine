@@ -1,7 +1,5 @@
-import Vue from 'vue';
 import Model from './model';
 import {Cytomine} from '@/api';
-import {isGeometry} from '@/utils/app';
 
 
 export default class Task extends Model {
@@ -18,7 +16,6 @@ export default class Task extends Model {
     this.name = null;
     this.description = null;
     this.authors = [];
-    this.outputs = [];
   }
 
   static async fetchAll() {
@@ -37,6 +34,11 @@ export default class Task extends Model {
 
   static async fetchTaskInputs(namespace, version) {
     let {data} = await Cytomine.instance.api.get(`${this.callbackIdentifier}/${namespace}/${version}/inputs`);
+    return data;
+  }
+
+  static async fetchTaskOutputs(namespace, version) {
+    let {data} = await Cytomine.instance.api.get(`${this.callbackIdentifier}/${namespace}/${version}/outputs`);
     return data;
   }
 
@@ -69,14 +71,9 @@ export default class Task extends Model {
     return data;
   }
 
-  async fetchOutputs() {
-    let {data} = await Cytomine.instance.api.get(`${this.callbackIdentifier}/${this.namespace}/${this.version}/outputs`);
-    Vue.set(this, 'outputs', data);
-
+  // Output: get a TaskRun output
+  static async fetchTaskRunOutput(project, runId) {
+    let {data} = await Cytomine.instance.api.get(`/app-engine/project/${project}/task-runs/${runId}/outputs`);
     return data;
-  }
-
-  hasGeometryOutput() {
-    return this.outputs.some(output => isGeometry(output));
   }
 }

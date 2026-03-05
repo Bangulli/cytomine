@@ -30,7 +30,6 @@ import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -50,5 +49,4 @@ public interface AbstractImageRepository extends JpaRepository<AbstractImage, Lo
     Set<Long> findAllIdsByProject(Project project);
 
 
-    Optional<AbstractImage> findByOriginalFilename(String originalFileName);
 }

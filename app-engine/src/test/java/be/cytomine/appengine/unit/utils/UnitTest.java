@@ -53,7 +53,6 @@ public class UnitTest {
         Assertions.assertTrue(Unit.isValid("1.5MiB"));
         Assertions.assertTrue(Unit.isValid("0.5GiByte"));
         Assertions.assertTrue(Unit.isValid("1Tbit"));
-        Assertions.assertTrue(Unit.isValid("1GiB"));
     }
 
     @Test

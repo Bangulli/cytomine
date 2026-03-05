@@ -2,6 +2,9 @@ package be.cytomine.controller.processing;
 
 import be.cytomine.controller.RestCytomineController;
 import be.cytomine.exceptions.ObjectNotFoundException;
+import be.cytomine.repository.ontology.OntologyRepository;
+import be.cytomine.repository.project.ProjectRepository;
+import be.cytomine.service.ontology.TermService;
 import be.cytomine.service.processing.ImageFilterProjectService;
 import be.cytomine.service.project.ProjectService;
 import be.cytomine.utils.JsonObject;
@@ -27,6 +30,7 @@ public class RestImageFilterProjectController extends RestCytomineController {
         return responseSuccess(imageFilterProjectService.list());
     }
 
+
     @GetMapping("/project/{id}/imagefilterproject.json")
     public ResponseEntity<String> listByProject(
             @PathVariable Long id
@@ -36,6 +40,7 @@ public class RestImageFilterProjectController extends RestCytomineController {
                 .map( project -> responseSuccess(imageFilterProjectService.list(project)))
                 .orElseThrow(() -> new ObjectNotFoundException("Project", id));
     }
+
 
     @PostMapping("/imagefilterproject.json")
     public ResponseEntity<String> add(@RequestBody String json) throws JsonProcessingException {

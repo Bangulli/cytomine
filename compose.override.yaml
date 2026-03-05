@@ -1,4 +1,15 @@
 services:
+
+  mongo:
+    image: cytomine/mongo:latest
+    build:
+      context: ./mongo/
+
+  postgis:
+    image: cytomine/postgis:latest
+    build:
+      context: ./postgis/
+
   web-ui:
     image: cytomine/web-ui:latest
     build:
@@ -7,8 +18,7 @@ services:
   pims:
     image: cytomine/pims:latest
     build:
-      context: ./
-      dockerfile: ./pims/Dockerfile
+      context: ./pims/
 
   iam:
     image: cytomine/iam:latest

@@ -491,9 +491,12 @@ public class ProvisionTaskStepDefinitions {
         // adding constraint to the existing unconstrainted parameter
         Parameter parameter = parameterOptional.get();
         String[] ruleSet = validationRule.split(":");
-        if (ruleSet[0].trim().equals("lt")) {
-            ((IntegerType) parameter.getType()).setLt(Integer.parseInt(ruleSet[1].trim()));
-            persistedTask = taskRepository.saveAndFlush(persistedTask);
+        switch (ruleSet[0].trim()) {
+            case "lt":
+                ((IntegerType)parameter.getType()).setLt(Integer.parseInt(ruleSet[1].trim()));
+                break;
+            default:
+                break;
         }
     }
 
@@ -734,10 +737,8 @@ public class ProvisionTaskStepDefinitions {
         for (Map<String, String> param : parameters) {
             String name = param.get("parameter_name");
             String type = param.get("parameter_type");
-            String value = param.get("parameter_value").equalsIgnoreCase("null") ? null : param.get("parameter_value");
-            if (value == null) {
-                continue;
-            }
+            String value = param.get("parameter_value");
+
             try {
                 apiClient.provisionInput(persistedRun.getId().toString(), name, type, value);
             } catch (RestClientResponseException e) {

@@ -75,7 +75,6 @@
             track-by="id"
             :multiple="true"
             :close-on-select="true"
-            class="project-select"
           />
         </div>
       </div>

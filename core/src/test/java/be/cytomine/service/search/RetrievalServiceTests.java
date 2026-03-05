@@ -12,17 +12,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.io.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.test.context.support.WithMockUser;
 
 import be.cytomine.BasicInstanceBuilder;
 import be.cytomine.CytomineCoreApplication;
-import be.cytomine.config.MongoTestConfiguration;
-import be.cytomine.config.PostGisTestConfiguration;
 import be.cytomine.controller.ontology.UserAnnotationResourceTests;
 import be.cytomine.domain.ontology.UserAnnotation;
 import be.cytomine.dto.search.SearchResponse;
@@ -35,9 +30,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest(classes = CytomineCoreApplication.class)
-@AutoConfigureMockMvc
-@WithMockUser(authorities = "ROLE_SUPER_ADMIN", username = "superadmin")
-@Import({MongoTestConfiguration.class, PostGisTestConfiguration.class})
 public class RetrievalServiceTests {
 
     @Autowired
@@ -73,7 +65,7 @@ public class RetrievalServiceTests {
     }
 
     @Test
-    void index_annotation_with_success() throws ParseException {
+    public void index_annotation_with_success() throws ParseException {
         UserAnnotation annotation = UserAnnotationResourceTests.given_a_user_annotation_with_valid_image_server(builder);
 
         /* Simulate call to CBIR */
@@ -104,7 +96,7 @@ public class RetrievalServiceTests {
     }
 
     @Test
-    void delete_index_with_success() {
+    public void delete_index_with_success() {
         UserAnnotation annotation = builder.given_a_user_annotation();
 
         /* Simulate call to CBIR */
@@ -135,7 +127,7 @@ public class RetrievalServiceTests {
     }
 
     @Test
-    void search_similar_images_with_success() throws JsonProcessingException, ParseException {
+    public void search_similar_images_with_success() throws JsonProcessingException, ParseException {
         UserAnnotation annotation = UserAnnotationResourceTests.given_a_user_annotation_with_valid_image_server(builder);
 
         /* Simulate call to CBIR */

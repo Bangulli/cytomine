@@ -4,7 +4,7 @@ kind: StatefulSet
 metadata:
   name: pims
   annotations:
-    kube-score/ignore: container-security-context-user-group-id,pod-hostpath
+    kube-score/ignore: pod-probes,container-security-context-user-group-id
   labels:
     role: pims
     app: {{ include "cytomine.name" . }}
@@ -25,9 +25,9 @@ spec:
       annotations:
         checksum/config: "{{ include (print $.Template.BasePath "/pims/pims-config.yaml") . | sha256sum }}"
     spec:
-      serviceAccountName: {{ include "cytomine.serviceAccountName" . }}
       securityContext:
-      {{- include "cytomine.podSecurityContext" . | nindent 8 }}
+        runAsUser: {{ .Values.containerSecurity.userID }}
+        fsGroup: {{ .Values.containerSecurity.fsgroupID }}
       {{- with .Values.global.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
@@ -38,9 +38,11 @@ spec:
             name: pims-logging
         - name: temp
           emptyDir: {}
-        {{- if .Values.pims.datasetImportStorage }}
+        {{- if .Values.pims.datasetImportFolder }}
         - name: import-folder
-          {{- .Values.pims.datasetImportStorage | toYaml | nindent 10 }}
+          hostPath:
+            path: {{ .Values.pims.datasetImportFolder }} # directory location on host
+            type: {{ .Values.pims.datasetImportFolderFailIfAbsent | ternary "Directory" "DirectoryOrCreate" | quote  }} # this field is optional
         {{- end }}
         {{ if not .Values.pims.imageStorage.storageClassName -}}
         - emptyDir: {}
@@ -50,21 +52,6 @@ spec:
         - emptyDir: {}
           name: images-temp
         {{ end }}
-      initContainers:
-        - name: wait-for-cache
-          image: "{{ .Values.images.pims_cache }}"
-          securityContext:
-          {{- include "cytomine.containerSecurityContext" . | nindent 12 }}
-          command:
-            - /bin/sh
-            - -c
-            - |
-              echo "Waiting for pims-cache (Redis) to be ready..."
-              until redis-cli -h pims-cache.{{ .Release.Namespace }}.svc.cluster.local -p {{ .Values.pims_cache.port }} ping | grep -q PONG; do
-                echo "pims-cache not ready, retrying in 2s..."
-                sleep 2
-              done
-              echo "pims-cache is ready!"
       containers:
         - name: pims
           image: "{{ .Values.images.pims }}"
@@ -92,9 +79,9 @@ spec:
                 secretKeyRef:
                   name: core-secret
                   key: IMAGE_SERVER_PRIVATE_KEY
-            {{- if .Values.pims.datasetImportStorage }}
+            {{- if .Values.pims.datasetImportFolder }}
             - name: DATASET_PATH
-              value: "/data/dataset"
+              value: {{ .Values.pims.datasetImportFolder }}
             {{- end }}
           volumeMounts:
             - name: images
@@ -108,7 +95,7 @@ spec:
               subPath: logging.yml
             - name: temp
               mountPath: /tmp
-            {{- if .Values.pims.datasetImportStorage }}
+            {{- if .Values.pims.datasetImportFolder }}
             - mountPath: "/data/dataset"
               name: import-folder
               readOnly: true
@@ -116,24 +103,10 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.pims.port }}
-          readinessProbe:
-            httpGet:
-              path: /ims/disk-usage
-              port: {{ .Values.pims.port }}
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            failureThreshold: 12
-            timeoutSeconds: 5
-          livenessProbe:
-            httpGet:
-              path: /ims/disk-usage
-              port: {{ .Values.pims.port }}
-            initialDelaySeconds: 60
-            periodSeconds: 30
-            failureThreshold: 3
-            timeoutSeconds: 10
           securityContext:
-          {{- include "cytomine.containerSecurityContext" . | nindent 12 }}
+            allowPrivilegeEscalation: {{ .Values.containerSecurity.allowPrivilegeEscalation }}
+            privileged: {{ .Values.containerSecurity.privileged }}
+            readOnlyRootFilesystem: {{ .Values.containerSecurity.readOnlyRootFilesystem }}
           resources:
             {{- toYaml .Values.pims.resources | nindent 12 }}
       {{- with .Values.global.tolerations }}
@@ -150,7 +123,7 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: {{ .Values.pims.imageStorage.size }}
+            storage: {{ .Values.imageStorage }}
     {{ end }}
     {{ if .Values.pims.tempImageStorage.storageClassName -}}
     - metadata:
@@ -161,6 +134,6 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: {{ .Values.pims.tempImageStorage.size }}
+            storage: {{ .Values.tempImageStorage }}
     {{ end }}
 {{ end }}

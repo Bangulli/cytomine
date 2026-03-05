@@ -7,7 +7,6 @@
     detailed
     narrowed
     per-page="5"
-    @details-open="onDetailsOpen"
   >
     <template #default="props">
       <b-table-column :label="$t('app-engine.task-run.state.title')">
@@ -22,19 +21,11 @@
     <template #detail="props">
       <section v-if="props.row.inputs">
         <h5 class="subtitle">{{ $t('app-engine.inputs.title') }}</h5>
-        <task-run-parameters-table
-            :parameters="props.row.inputs"
-            :project-id="props.row.project"
-            type="input"
-        />
+        <task-run-parameters-table :parameters="props.row.inputs" />
       </section>
       <section v-if="props.row.outputs" class="output-section">
         <h5 class="subtitle">{{ $t('app-engine.outputs.title') }}</h5>
-        <task-run-parameters-table
-            :parameters="props.row.outputs"
-            :project-id="props.row.project"
-            type="output"
-        />
+        <task-run-parameters-table :parameters="props.row.outputs" />
       </section>
     </template>
 
@@ -65,15 +56,6 @@ export default {
     },
     formatTaskName(row) {
       return `${row.task.name} (${row.task.version}) - ${this.formattedTime(row.created_at)}`;
-    },
-    async onDetailsOpen(taskRun) {
-      if (!taskRun.inputs) {
-        await taskRun.fetchInputs();
-      }
-
-      if (!taskRun.outputs) {
-        await taskRun.fetchOutputs();
-      }
     },
   },
 };

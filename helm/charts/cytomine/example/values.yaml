@@ -1,5 +1,5 @@
 global:
-  domainName: "cytomine.local"
+  domainName: 'cytomine.local'
 
 postgresql:
   storageClassName:
@@ -8,10 +8,7 @@ pims:
     storageClassName:
   tempImageStorage:
     storageClassName:
-  datasetImportStorage:
-    hostPath:
-      path: /data/dataset
-      type: DirectoryOrCreate
+  datasetImportFolder: '/data/dataset'
 mongodb:
   storageClassName:
 app_engine:
@@ -24,6 +21,3 @@ iam:
   lsaaiClientIdSecretName: lsaai-client-id
   lsaaiClientSecretSecretName: lsaai-client-secret
   lsaaiEndpoint: https://login.aai.lifescience-ri.eu/oidc/.well-known/openid-configuration
-
-images:
-  pullPolicy: IfNotPresent

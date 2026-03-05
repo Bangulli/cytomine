@@ -17,6 +17,4 @@ public interface TaskRunLayerRepository extends JpaRepository<TaskRunLayer, Long
     Optional<TaskRunLayer> findByAnnotationLayerId(Long id);
 
     Optional<TaskRunLayer> findByTaskRunAndImage(TaskRun taskRun, ImageInstance image);
-
-    Optional<TaskRunLayer> findByTaskRun(TaskRun taskRun);
 }

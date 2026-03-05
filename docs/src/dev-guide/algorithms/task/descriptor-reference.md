@@ -316,11 +316,11 @@ configuration:
 
 **Description**: The minimum amount of RAM that the Task requires.
 
-|              |                            |
-| ------------ | -------------------------- |
-| **Type**     | `integer`                  |
-| **Required** | `false`                    |
-| **Default**  | `"1Gi"`                    |
+|              |                             |
+| ------------ | --------------------------- |
+| **Type**     | `integer`                   |
+| **Required** | `false`                     |
+| **Default**  | `"1GiB"`                    |
 | **Format**   | [Memory unit](#memory-unit) |
 
 ### `configuration.resources.gpus`

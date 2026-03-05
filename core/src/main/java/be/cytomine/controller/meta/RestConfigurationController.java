@@ -3,6 +3,8 @@ package be.cytomine.controller.meta;
 import be.cytomine.controller.RestCytomineController;
 import be.cytomine.domain.meta.Configuration;
 import be.cytomine.exceptions.ObjectNotFoundException;
+import be.cytomine.repository.meta.ConfigurationRepository;
+import be.cytomine.repository.project.ProjectRepository;
 import be.cytomine.service.meta.ConfigurationService;
 import be.cytomine.service.utils.TaskService;
 import be.cytomine.utils.JsonObject;
@@ -12,6 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/api")
 @Slf4j
@@ -19,6 +24,10 @@ import org.springframework.web.bind.annotation.*;
 public class RestConfigurationController extends RestCytomineController {
 
     private final ConfigurationService configurationService;
+
+    private final ConfigurationRepository configurationRepository;
+
+    private final ProjectRepository projectRepository;
 
     private final TaskService taskService;
 

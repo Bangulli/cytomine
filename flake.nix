@@ -4,24 +4,12 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      flake-utils,
-    }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-      in
-      {
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let pkgs = nixpkgs.legacyPackages.${system};
+      in {
         devShell = pkgs.mkShell {
-          LD_LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [
-            pkgs.stdenv.cc.cc.lib
-            pkgs.zlib
-          ];
-          buildInputs = with pkgs; [
+          buildInputs = with pkgs;[
             chart-testing
             fluxcd
             kubectl
@@ -31,14 +19,10 @@
             postgresql
             python3
             uv
-            age
-            sops
-            nodejs
           ];
           shellHook = ''
             export KUBECONFIG=./.kube/config
           '';
         };
-      }
-    );
+      });
 }

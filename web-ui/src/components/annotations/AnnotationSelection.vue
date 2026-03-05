@@ -68,6 +68,7 @@ export default {
       return new AnnotationCollection({
         project: this.project.id,
         image: this.imageIds,
+        terms: this.terms.map(term => term.id),
         showWKT: true,
         max: this.nbPerPage,
       });
@@ -91,6 +92,9 @@ export default {
     },
     layersIds() {
       return this.layers.map(layer => layer.id);
+    },
+    terms() {
+      return this.$store.getters['currentProject/terms'] || [];
     },
   },
   watch: {

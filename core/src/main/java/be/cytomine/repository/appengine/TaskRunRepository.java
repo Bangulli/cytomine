@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
@@ -14,9 +13,4 @@ public interface TaskRunRepository extends JpaRepository<TaskRun, Long>, JpaSpec
     Optional<TaskRun> findByProjectIdAndTaskRunId(Long projectId, UUID taskRunId);
 
     List<TaskRun> findAllByProjectId(Long projectId);
-
-    Optional<TaskRun> findFirstByProjectIdOrderByCreatedDesc(Long projectId);
-
-    @Transactional
-    void deleteTaskRunByTaskRunId(UUID taskRunId);
 }

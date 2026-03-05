@@ -42,13 +42,13 @@ public abstract class CytomineDomain {
 
     @GenericGenerator(
         name = "myGenerator",
-        type = be.cytomine.config.CustomIdentifierGenerator.class,
+        strategy = "be.cytomine.config.CustomIdentifierGenerator",
         parameters = {
             @org.hibernate.annotations.Parameter(name = "sequence_name", value = "hibernate_sequence"),
             @org.hibernate.annotations.Parameter(name = "increment_size", value = "1")
         }
     )
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "myGenerator")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE,generator = "myGenerator")
     @Id
     protected Long id;
 

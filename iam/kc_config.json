@@ -53,7 +53,7 @@
       "composites" : {
         "realm" : [ "offline_access", "uma_authorization" ],
         "client" : {
-          "core" : [ "GUEST" ],
+          "core" : [ "USER" ],
           "account" : [ "view-profile", "manage-account" ]
         }
       },

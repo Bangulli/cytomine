@@ -41,7 +41,7 @@
               <i class="fas fa-edit"></i>
             </span>
           </button>
-          <button class="button is-small" @click="confirmTermDeletion(node)" :data-delete-term="node.data.name">
+          <button class="button is-small" @click="confirmTermDeletion(node)">
             <span class="icon is-small">
               <i class="far fa-trash-alt"></i>
             </span>

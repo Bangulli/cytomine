@@ -23,6 +23,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import be.cytomine.config.properties.ApplicationProperties;
 import be.cytomine.domain.ontology.AnnotationDomain;
 import be.cytomine.dto.image.CropParameter;
 import be.cytomine.dto.search.SearchResponse;
@@ -36,6 +37,8 @@ public class RetrievalService {
     public static final String CBIR_API_BASE_PATH = "/cbir";
 
     private final static String INDEX_NAME = "annotation";
+
+    private final ApplicationProperties applicationProperties;
 
     private final ImageServerService imageServerService;
 
@@ -202,10 +205,6 @@ public class RetrievalService {
         SearchResponse searchResponse = response.getBody();
         if (searchResponse == null) {
             return response;
-        }
-
-        if (searchResponse.getSimilarities().size() == 0) {
-            return ResponseEntity.ok(searchResponse);
         }
 
         searchResponse.getSimilarities().remove(0);

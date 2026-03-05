@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: app-engine
   labels:
@@ -16,41 +16,9 @@ spec:
       annotations:
         checksum/config: "{{ include (print $.Template.BasePath "/app-engine/app-engine-config.yaml") . | sha256sum }}"
     spec:
-      securityContext:
-      {{- include "cytomine.podSecurityContext" . | nindent 8 }}
-      volumes:
-        {{ if not .Values.app_engine.storage.storageClassName -}}
-        - name: app-engine-storage
-          emptyDir: {}
-        {{ end }}
-        - name: temp
-          emptyDir: {}
-      initContainers:
-        - name: wait-for-postgres
-          image: "{{ .Values.images.postgresql_app_engine }}"
-          securityContext:
-          {{- include "cytomine.containerSecurityContext" . | nindent 12 }}
-          env:
-            - name: PGPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-app-engine-secret
-                  key: password
-          command:
-            - /bin/sh
-            - -c
-            - |
-              echo "Waiting for postgres-app-engine to be ready..."
-              until pg_isready -h postgres-app-engine.{{ .Release.Namespace }}.svc.cluster.local -p 5432 -U appengine; do
-                echo "postgres-app-engine not ready, retrying in 2s..."
-                sleep 2
-              done
-              echo "postgres-app-engine is ready!"
       containers:
       - name: app-engine
-        image: {{ .Values.images.app_engine }}
-        securityContext:
-        {{- include "cytomine.containerSecurityContext" . | nindent 12 }}
+        image: "{{ .Values.images.app_engine }}"
         ports:
         - containerPort: {{ .Values.app_engine.port }}
         envFrom:
@@ -62,22 +30,12 @@ spec:
             secretKeyRef:
               name: postgres-app-engine-secret
               key: password
-        volumeMounts:
-          - name: app-engine-storage
-            mountPath: /data
-          - name: temp
-            mountPath: /tmp
+        - name: SCHEDULER_MASTER_URL
+          value: "https://kubernetes.default.svc"
+        - name: SCHEDULER_OAUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: app-engine
+              key: token
       serviceAccountName: app-engine
       automountServiceAccountToken: true
-  {{ if .Values.app_engine.storage.storageClassName -}}
-  volumeClaimTemplates:
-    - metadata:
-        name: app-engine-storage
-      spec:
-        storageClassName: {{ .Values.app_engine.storage.storageClassName }}
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: {{ .Values.app_engine.storage.size }}
-  {{ end }}

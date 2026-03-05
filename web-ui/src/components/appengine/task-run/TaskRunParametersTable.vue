@@ -33,21 +33,16 @@
 </template>
 
 <script>
-import {Cytomine} from '@/api';
-import {updateToken} from '@/utils/token-utils';
-
 export default {
   name: 'TaskRunParametersTable',
   props: {
     parameters: {type: Array, required: true},
-    projectId: {type: Number, required: true},
-    type: {type: String, required: true}
   },
   methods: {
-    async download(data, name) {
-      const cytomine = Cytomine.instance;
-      const token = await updateToken();
-      let url = `${cytomine.host}${cytomine.basePath}app-engine/project/${this.projectId}/task-runs/${data.task_run_id}/${this.type}/${name}?auth=${token}`;
+    download(data, type, name) {
+      const blob = new Blob([data], {type});
+      let url = URL.createObjectURL(blob);
+
       let link = document.createElement('a');
       link.href = url;
       link.download = name;
@@ -55,14 +50,15 @@ export default {
 
       document.body.appendChild(link);
       link.click();
-    
+
+      URL.revokeObjectURL(url);
       document.body.removeChild(link);
     },
     downloadFile(output) {
-      this.download(output, output.param_name);
+      this.download(new Uint8Array(output.value), 'application/octet-stream', output.param_name);
     },
     downloadGeometry(output) {
-      this.download(output,`${output.param_name}.geojson`);
+      this.download(output.value, 'application/geo+json', `${output.param_name}.geojson`);
     },
   },
 };

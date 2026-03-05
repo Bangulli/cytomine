@@ -51,7 +51,7 @@
         <section class="content">
           <h5 class="subtitle">{{ $t('app-engine.runs.title') }}</h5>
         </section>
-        <task-run-table :task-runs="allTaskRuns"/>
+        <task-run-table :task-runs="trackedTaskRuns"/>
       </div>
     </div>
   </div>
@@ -74,8 +74,7 @@ export default {
     return {
       selectedTask: null,
       tasks: [],
-      allTaskRuns: [],
-      trackedTaskRuns: [],
+      trackedTaskRuns: []
     };
   },
   async created() {
@@ -84,17 +83,20 @@ export default {
 
     setInterval(async () => {
       for (let taskRun of this.trackedTaskRuns) {
-        if (!taskRun.isTerminalState()) {
+        if (taskRun.state !== 'FINISHED' && taskRun.state !== 'FAILED') {
           await taskRun.fetch();
         }
 
-        if (taskRun.isTerminalState() && this.getTask(taskRun).hasGeometryOutput()) {
-          await taskRun.fetchOutputs();
-          this.$eventBus.$emit('annotation-layers:refresh');
+        if (taskRun.state === 'FINISHED') {
+          if (!taskRun.outputs) {
+            await taskRun.fetchOutputs();
+          }
+
+          if (taskRun.outputs.some(output => output.type === 'GEOMETRY')) {
+            this.$eventBus.$emit('annotation-layers:refresh');
+          }
         }
       }
-
-      this.trackedTaskRuns = this.trackedTaskRuns.filter(taskRun => !taskRun.isTerminalState());
     }, 2000);
   },
   computed: {
@@ -107,8 +109,7 @@ export default {
     async catchTaskRunLaunch(event) {
       let taskRun = new TaskRun(event.resource);
       taskRun.project = this.currentProjectId;
-
-      this.allTaskRuns = [taskRun, ...this.allTaskRuns];
+      await taskRun.fetchInputs();
       this.trackedTaskRuns = [taskRun, ...this.trackedTaskRuns];
     },
     async fetchTasks() {
@@ -118,16 +119,27 @@ export default {
       let taskRuns = await TaskRun.fetchByProject(this.currentProjectId);
       taskRuns.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-      this.allTaskRuns = await Promise.all(
+      this.trackedTaskRuns = await Promise.all(
         taskRuns.map(async ({project, taskRunId}) => {
           let taskRun = await Task.fetchTaskRunStatus(this.currentProjectId, taskRunId);
+
+          // Mark all previous runs as failed if not finished
+          if (taskRun.state !== 'FINISHED') {
+            taskRun.state = 'FAILED';
+          }
+
           return new TaskRun({...taskRun, project});
         })
       );
+
+      await Promise.all(this.trackedTaskRuns.map(run => run.fetchInputs()));
+
+      await Promise.all(
+        this.trackedTaskRuns
+          .filter(taskRun => taskRun.state === 'FINISHED')
+          .map(run => run.fetchOutputs())
+      );
     },
-    getTask(taskRun) {
-      return this.tasks.find(task => task.id === taskRun.task.id);
-    }
   },
 };
 </script>
@@ -154,7 +166,6 @@ $border: #383838;
   text-decoration: none;
   display: flex;
   align-items: center;
-  padding-right: 3rem;
 }
 
 .card-header-title:hover {

@@ -99,19 +99,8 @@ public class RegistryClient {
         Context context = new Context();
         Reference reference = Reference.prepareReference(image);
         context.setReference(reference);
-
-        if (reference.getDigest() == null) {
-            if (Configurer.authenticated()) {
-                context.setToken(AUTHENTICATOR.getToken(new Pair<>(Scope.PULL, reference)));
-            }
-            String digest = REGISTRY_OPERATE.digest(context, reference)
-                    .orElseThrow(() -> new RuntimeException("digest not found"));
-            reference.setDigest(digest);
-        }
-
-        if (Configurer.authenticated()) {
+        if (Configurer.authenticated())
             context.setToken(AUTHENTICATOR.getToken(new Pair<>(Scope.DELETE, reference)));
-        }
         REGISTRY_OPERATE.delete(context, reference);
     }
 

@@ -19,8 +19,6 @@ package be.cytomine.controller.ontology;
 import be.cytomine.BasicInstanceBuilder;
 import be.cytomine.CytomineCoreApplication;
 import be.cytomine.TestUtils;
-import be.cytomine.config.MongoTestConfiguration;
-import be.cytomine.config.PostGisTestConfiguration;
 import be.cytomine.domain.image.ImageInstance;
 import be.cytomine.domain.image.SliceInstance;
 import be.cytomine.domain.ontology.*;
@@ -29,7 +27,6 @@ import be.cytomine.domain.security.User;
 import be.cytomine.repository.ontology.AnnotationDomainRepository;
 import be.cytomine.repository.ontology.UserAnnotationRepository;
 import be.cytomine.utils.JsonObject;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.RequestPatternBuilder;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -46,7 +43,6 @@ import org.locationtech.jts.io.WKTReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -58,7 +54,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -79,7 +74,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(classes = CytomineCoreApplication.class)
 @AutoConfigureMockMvc
 @WithMockUser(username = "superadmin")
-@Import({MongoTestConfiguration.class, PostGisTestConfiguration.class})
 @Transactional
 public class AnnotationDomainResourceTests {
 
@@ -1047,19 +1041,12 @@ public class AnnotationDomainResourceTests {
     }
 
     private ResultActions performDownload(String format, String users, boolean reviewed) throws Exception {
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        Map<String, Object> jsonBody = new LinkedHashMap<>();
-        jsonBody.put("format", format);
-        jsonBody.put("users", List.of(users));
-        jsonBody.put("reviewed", reviewed);
-        jsonBody.put("terms", List.of(this.term.getId().toString()));
-        jsonBody.put("images", List.of(this.image.getId().toString()));
-
-        return restAnnotationDomainControllerMockMvc.perform(post("/api/project/{project}/annotation/download", project.getId())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(jsonBody))
-        );
+        return restAnnotationDomainControllerMockMvc.perform(get("/api/project/{project}/annotation/download", project.getId())
+                .param("format", format)
+                .param("users", users)
+                .param("reviewed", String.valueOf(reviewed))
+                .param("terms", this.term.getId().toString())
+                .param("images", this.image.getId().toString()));
     }
 
     private List<String> getUsersFromResult(MvcResult mvcResult) throws UnsupportedEncodingException {

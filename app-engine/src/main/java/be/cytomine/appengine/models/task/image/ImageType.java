@@ -21,6 +21,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Transient;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.beans.factory.annotation.Value;
 
 import be.cytomine.appengine.dto.inputs.task.types.image.ImageTypeConstraint;
 import be.cytomine.appengine.dto.inputs.task.types.image.ImageValue;
@@ -63,10 +64,9 @@ public class ImageType extends Type {
     @Transient
     private FileFormat format;
 
-    private String getStorageBasePath() {
-        return AppEngineApplicationContext.getBean(org.springframework.core.env.Environment.class)
-            .getProperty("storage.base-path");
-    }
+    @Transient
+    @Value("${storage.base-path}")
+    private static String storageBasePath;
 
     public void setConstraint(ImageTypeConstraint constraint, JsonNode value) {
         switch (constraint) {
@@ -262,7 +262,7 @@ public class ImageType extends Type {
         File outputFile = currentOutputStorageData.peek().getData();
         // if this is a directory-based image like wsi dicom
         if (currentOutputStorageData.peek().getStorageDataType().equals(StorageDataType.DIRECTORY)) {
-            outputFile = new File(getStorageBasePath()
+            outputFile = new File(storageBasePath
                 + "/"
                 + currentOutputStorageData.peek().getStorageId()
                 + "/"

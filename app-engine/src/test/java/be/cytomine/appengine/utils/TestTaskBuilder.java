@@ -386,7 +386,7 @@ public class TestTaskBuilder {
                 a.setLastName(author.get("last_name").textValue());
                 a.setOrganization(author.get("organization").textValue());
                 a.setEmail(author.get("email").textValue());
-                a.setContact(author.path("is_contact").asBoolean(false));
+                a.setContact(author.get("is_contact").asBoolean());
                 authors.add(a);
             }
         }

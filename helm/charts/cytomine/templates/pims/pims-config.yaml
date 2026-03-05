@@ -20,7 +20,8 @@ data:
     PIMS_URL: pims.{{ .Release.Namespace }}.svc.cluster.local
     cache_url: redis://pims-cache.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.pims_cache.port }}
     ROOT: /data/images
-    INTERNAL_URL_CORE: http://core.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.core.port }}
+    # INTERNAL_URL_CORE: http://core.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.core.port }}
+    INTERNAL_URL_CORE: {{ include "core.url" . }}
     DEBUG: 'true'
 {{ end }}
 ---

@@ -3,7 +3,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pims-cache
-  annotations: {}
+  annotations:
+    kube-score/ignore: pod-probes
   labels:
     role: pims-cache
     app: {{ include "cytomine.name" . }}
@@ -23,7 +24,9 @@ spec:
         release: {{ .Release.Name }}
     spec:
       securityContext:
-      {{- include "cytomine.podSecurityContext" . | nindent 8 }}
+        runAsUser: {{ .Values.containerSecurity.userID }}
+        runAsGroup: {{ .Values.containerSecurity.groupID }}
+        fsGroup: {{ .Values.containerSecurity.fsgroupID }}
       serviceAccountName: {{ include "cytomine.serviceAccountName" . }}
       {{- with .Values.global.affinity }}
       affinity:
@@ -33,29 +36,13 @@ spec:
         - name: pims-cache
           image: "{{ .Values.images.pims_cache }}"
           imagePullPolicy: {{ .Values.images.pullPolicy }}
-          securityContext:
-          {{- include "cytomine.containerSecurityContext" . | nindent 12 }}
           ports:
             - name: http
               containerPort: {{ .Values.pims_cache.port }}
-          readinessProbe:
-            exec:
-              command:
-                - redis-cli
-                - ping
-            initialDelaySeconds: 5
-            periodSeconds: 3
-            failureThreshold: 5
-            timeoutSeconds: 2
-          livenessProbe:
-            exec:
-              command:
-                - redis-cli
-                - ping
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            failureThreshold: 3
-            timeoutSeconds: 2
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.containerSecurity.allowPrivilegeEscalation }}
+            privileged: {{ .Values.containerSecurity.privileged }}
+            readOnlyRootFilesystem: {{ .Values.containerSecurity.readOnlyRootFilesystem }}
           resources:
             {{- toYaml .Values.pims_cache.resources | nindent 12 }}
           volumeMounts:

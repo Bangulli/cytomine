@@ -1,6 +1,5 @@
 package be.cytomine.appengine.models.task;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -67,9 +66,6 @@ public class Task extends BaseEntity {
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<Match> matches;
-
-    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Run> runs = new ArrayList<>();
 
     public Task(
         UUID identifier,

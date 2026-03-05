@@ -21,11 +21,9 @@ kind: ServiceAccount
 metadata:
   name: app-engine
   namespace: {{ .Release.Namespace }}
-{{ if .Values.images.imagePullSecretsNames }}
+{{ if .Values.images.imagePullSecretsName }}
 imagePullSecrets:
-{{- range .Values.images.imagePullSecretsNames }}
-- name: {{ . }}
-{{- end }}
+- name: {{ .Values.images.imagePullSecretsName }}
 {{ end }}
 
 ---
@@ -46,8 +44,8 @@ metadata:
   namespace: {{ include "cytomine.appEngineTasksNamespace" . }}
 rules:
 - apiGroups: [""] # "" indicates the core API group
-  resources: ["pods", "pods/status"]
-  verbs: ["create", "get", "watch", "list", "delete"]
+  resources: ["pods"]
+  verbs: ["post","get", "watch", "list"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1

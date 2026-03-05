@@ -106,32 +106,25 @@ public class TaskRunController {
 
     @GetMapping("/project/{project}/task-runs/{task}/input/{parameter_name}")
     public void getTaskRunInputParameter(
-        @PathVariable Long project,
-        @PathVariable UUID task,
-        @PathVariable("parameter_name") String parameterName,
-        @RequestParam(required = true) String auth, // don't remove this parameter, it's used by the security filter'
-        HttpServletResponse response
-    )
-    {
-        if (parameterName.endsWith(".geojson")) {
-            response.setContentType("application/geo+json");
-        } else {
+            @PathVariable Long project,
+            @PathVariable UUID task,
+            @PathVariable("parameter_name") String parameterName,
+            HttpServletResponse response
+    ) {
+        File file = taskRunService.getTaskRunIOParameter(project, task, parameterName, "input");
+        try (InputStream is = new FileInputStream(file);
+             OutputStream os = response.getOutputStream()) {
+
             response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
-        }
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=\"" + parameterName + "\"");
-        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
-        response.setHeader(HttpHeaders.PRAGMA, "no-cache");
-        response.setHeader(HttpHeaders.EXPIRES, "0");
+            response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + parameterName + "\"");
+            response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
+            response.setHeader(HttpHeaders.PRAGMA, "no-cache");
+            response.setHeader(HttpHeaders.EXPIRES, "0");
 
-        try (OutputStream os = response.getOutputStream())
-        {
-
-            taskRunService.getTaskRunIOParameter(project, task, parameterName, "input", os);
+            is.transferTo(os);
             os.flush();
-
-        } catch (IOException e)
-        {
+            file.delete();
+        } catch (IOException e) {
             throw new RuntimeException("Error while streaming the input parameter", e);
         }
     }
@@ -150,24 +143,21 @@ public class TaskRunController {
             @PathVariable Long project,
             @PathVariable UUID task,
             @PathVariable("parameter_name") String parameterName,
-            @RequestParam(required = true) String auth, // don't remove this parameter, it's used by the security filter'
             HttpServletResponse response
     ) {
+        File file = taskRunService.getTaskRunIOParameter(project, task, parameterName, "output");
+        try (InputStream is = new FileInputStream(file);
+             OutputStream os = response.getOutputStream()) {
 
-        if (parameterName.endsWith(".geojson")) {
-            response.setContentType("application/geo+json");
-        } else {
             response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
-        }
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + parameterName + "\"");
-        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
-        response.setHeader(HttpHeaders.PRAGMA, "no-cache");
-        response.setHeader(HttpHeaders.EXPIRES, "0");
+            response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + parameterName + "\"");
+            response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
+            response.setHeader(HttpHeaders.PRAGMA, "no-cache");
+            response.setHeader(HttpHeaders.EXPIRES, "0");
 
-        try (OutputStream os = response.getOutputStream()) {
-
-            taskRunService.getTaskRunIOParameter(project, task, parameterName, "output", os);
+            is.transferTo(os);
             os.flush();
+            file.delete();
         } catch (IOException e) {
             throw new RuntimeException("Error while streaming the output parameter", e);
         }

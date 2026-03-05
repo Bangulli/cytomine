@@ -28,14 +28,13 @@ import be.cytomine.appengine.dto.responses.errors.ErrorBuilder;
 import be.cytomine.appengine.dto.responses.errors.ErrorCode;
 import be.cytomine.appengine.exceptions.AppStoreServiceException;
 import be.cytomine.appengine.exceptions.BundleArchiveException;
-import be.cytomine.appengine.exceptions.RegistryException;
 import be.cytomine.appengine.exceptions.RunTaskServiceException;
-import be.cytomine.appengine.exceptions.SchedulingException;
 import be.cytomine.appengine.exceptions.TaskNotFoundException;
 import be.cytomine.appengine.exceptions.TaskServiceException;
 import be.cytomine.appengine.exceptions.ValidationException;
 import be.cytomine.appengine.handlers.StorageData;
 import be.cytomine.appengine.models.task.Task;
+import be.cytomine.appengine.repositories.TaskRepository;
 import be.cytomine.appengine.services.AppStoreService;
 import be.cytomine.appengine.services.TaskService;
 
@@ -44,6 +43,8 @@ import be.cytomine.appengine.services.TaskService;
 @RestController
 @RequestMapping(path = "${app-engine.api_prefix}${app-engine.api_version}/")
 public class TaskController {
+
+    private final TaskRepository taskRepository;
 
     private final TaskService taskService;
     private final AppStoreService appStoreService;
@@ -102,21 +103,21 @@ public class TaskController {
     }
 
     @DeleteMapping(value = "tasks/{namespace}/{version}")
-    public void deleteTaskByNamespaceAndVersion(
+    @ResponseStatus(code = HttpStatus.OK)
+    public ResponseEntity<?> deleteTaskByNamespaceAndVersion(
         @PathVariable String namespace,
         @PathVariable String version
-    ) throws RegistryException,
-            SchedulingException,
-            TaskNotFoundException {
+    ) {
         log.info("DELETE /tasks/{}/{}", namespace, version);
-        Task task = taskService.findByNamespaceAndVersion(namespace, version)
-                .orElseThrow(() -> {
-                    String errorMessage = "Task " + namespace + ":" + version + " not found.";
-                    return new TaskNotFoundException(errorMessage);
-                });
-
-        taskService.deleteTask(task);
-        log.info("DELETE /tasks/{}/{} - completed successfully", namespace, version);
+        return taskService.findByNamespaceAndVersion(namespace, version)
+            .map(task -> {
+                taskRepository.deleteByNamespaceAndVersion(namespace, version);
+                return ResponseEntity.noContent().build();
+            })
+            .orElseGet(() -> new ResponseEntity<>(
+                ErrorBuilder.build(ErrorCode.INTERNAL_TASK_NOT_FOUND),
+                HttpStatus.NOT_FOUND
+            ));
     }
 
     @GetMapping(value = "tasks/{id}/inputs")
@@ -293,19 +294,5 @@ public class TaskController {
         return ResponseEntity.ok()
                 .headers(headers)
                 .body(new FileSystemResource(file));
-    }
-
-    @GetMapping("tasks/{namespace}/{version}/runs")
-    public ResponseEntity<List<TaskRun>> getTaskRuns(
-            @PathVariable String namespace,
-            @PathVariable String version
-    ) throws TaskNotFoundException {
-        Task task = taskService.findByNamespaceAndVersion(namespace, version)
-                .orElseThrow(() -> {
-                    String errorMessage = "Task " + namespace + ":" + version + " not found.";
-                    return new TaskNotFoundException(errorMessage);
-                });
-
-        return ResponseEntity.ok(taskService.getRunsByTask(task));
     }
 }
