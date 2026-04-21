@@ -15,9 +15,8 @@ Due to the microservice relying on foundation models a GPU is required in the en
 
 This repo is a couple of commits behind the main repo so containers cant be fetched from the up-to-date registry, follow these instructions instead:
 ```bash
-git clone https://github.com/Bangulli/cytomine
+git clone https://github.com/imi-bigpicture/cytomine-WSI-CBIR
 cd cytomine
-git checkout wsi-cbir-1.1.0
 docker compose config --services | grep -v '^wsi-cbir$' | xargs docker compose build
 docker compose up -d
 ```
@@ -25,9 +24,8 @@ docker compose up -d
 Per default this will launche the application with the heavy prov-gigapath model as an encoder, this will not run in weak GPU environments.
 Therefore for test purposes you can fetch a much lighter version from the registry and plug it into the compose app:
 ```bash
-git clone https://github.com/Bangulli/cytomine
+git clone https://github.com/imi-bigpicture/cytomine-WSI-CBIR
 cd cytomine
-git checkout wsi-cbir-1.1.0
 docker compose config --services | grep -v '^wsi-cbir$' | xargs docker compose build
 docker pull lokuhn/wsi-cbir:1.1.1.chief
 docker tag lokuhn/wsi-cbir:1.1.1.chief lokuhn/wsi-cbir:1.1.1
